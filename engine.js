@@ -275,7 +275,45 @@
     };
   }
 
+  /* ---------- 4. daily key: one row per signal_id + Asia/Seoul date ---------- */
+
+  const utcDate = iso => new Date(iso).toISOString().slice(0, 10);
+
+  function kstClock(iso) {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+    }).formatToParts(new Date(iso)).map(x => [x.type, x.value]));
+    return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
+  }
+
+  /* Apply readings one by one to a fresh state and record what happened to the row count.
+   * steps: [{label, source, reading}]  ->  { state, trace[] } */
+  function runDailySeries(steps) {
+    let st = resetState();
+    const trace = [];
+    for (const s of steps) {
+      const r = s.reading, before = st.daily_readings.length;
+      const existing = st.daily_readings.find(x => x.signal_id === r.signal_id && x.record_date === r.record_date);
+      let action, error = null;
+      try {
+        st = applySuccessfulReading(st, r, { fixture_id: s.label });
+        action = existing ? 'update' : 'insert';
+      } catch (e) { action = 'reject'; error = e.message; }
+      const row = st.daily_readings.find(x => x.signal_id === r.signal_id && x.record_date === r.record_date);
+      trace.push({
+        label: s.label, source: s.source || '', fetched_at: r.fetched_at,
+        utc_date: utcDate(r.fetched_at), kst_clock: kstClock(r.fetched_at), kst_date: kstDate(r.fetched_at), key_date: r.record_date,
+        action, error, rows_before: before, rows_after: st.daily_readings.length,
+        value: r.normalized_value, record_id: row ? row.record_id : null,
+        first_fetched_at: row ? row.first_fetched_at : null, last_fetched_at: row ? row.last_fetched_at : null
+      });
+    }
+    return { state: st, trace };
+  }
+
   root.T04 = {
+    utcDate, kstClock, runDailySeries,
     ERROR_CODES, FAILURES, kstDate, resetState, validateNormalizedReading, applySuccessfulReading, applyError,
     runFixture, checkExpected, classifyFetchFailure, comparisonFor, loadPackage, sha256hex, canonicalJson
   };
