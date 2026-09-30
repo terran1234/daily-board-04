@@ -44,7 +44,7 @@ Get-ChildItem $root -Recurse -File -Force |
 "local files scanned : $count"
 
 if ($BaseUrl) {
-  $paths = 'index.html','README.md','scripts/record.ps1','scan.ps1','data/latest.json'
+  $paths = 'index.html','engine.js','README.md','scripts/record.ps1','scan.ps1','data/latest.json'
   $paths += Get-ChildItem "$root\data\raw" -File | ForEach-Object { "data/raw/$($_.Name)" }
   $n = 0
   foreach ($p in $paths) {
