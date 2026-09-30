@@ -4,89 +4,89 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>오늘의 원/달러 환율</title>
-<meta name="description" content="USD/KRW 환율과 그 값의 나이·출처·기준 시간대를 함께 보여주는 정보판">
+<meta name="description" content="USD/KRW 환율과 그 값의 나이·출처·기준 시간대를 보여주고, 데이터가 안 올 때 다섯 가지 실패를 구분해 설명하는 정보판">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
   :root {
-    --paper: #ebe8df;
-    --card: #f6f4ed;
-    --ink: #15130f;
-    --ink-2: #514e46;
-    --ink-3: #85817a;
-    --line: #d6d2c5;
-
-    --panel: #101512;
-    --panel-2: #171e19;
-    --panel-line: #263028;
-    --p-ink: #f3f0e6;
-    --p-ink-2: #a9b1a6;
-    --p-ink-3: #6e786f;
-
-    --fresh: #b8f36a;
-    --stale: #ffb84d;
-    --fail: #ff7a6b;
+    --paper: #ebe8df; --card: #f6f4ed; --ink: #15130f; --ink-2: #514e46; --ink-3: #85817a; --line: #d6d2c5;
+    --panel: #101512; --panel-2: #171e19; --panel-line: #263028; --p-ink: #f3f0e6; --p-ink-2: #a9b1a6; --p-ink-3: #6e786f;
+    --fresh: #b8f36a; --amber: #ffb84d; --red: #ff7a6b; --slate: #9fb0c6; --violet: #b9a3ff;
     --state: var(--fresh);
-
     --sans: "Pretendard", system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
     --num: "Space Grotesk", "Pretendard", system-ui, sans-serif;
     --mono: "JetBrains Mono", ui-monospace, Consolas, "D2Coding", monospace;
+    --t-amber: #c77a00; --t-red: #c4392a; --t-slate: #4f6079; --t-violet: #6a4fd0; --t-ok: #2f7d12;
+    --syn: #7b5cd6;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --paper: #0a0b0a; --card: #121512; --ink: #ecebe4; --ink-2: #b1b0a6; --ink-3: #777a72; --line: #232823;
       --panel: #131914; --panel-2: #1a221b; --panel-line: #2a352c;
+      --t-amber: #ffb84d; --t-red: #ff8a7a; --t-slate: #9fb0c6; --t-violet: #b9a3ff; --t-ok: #8bd44a; --syn: #b9a3ff;
     }
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--sans); letter-spacing: -0.01em; -webkit-font-smoothing: antialiased; }
   a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
   .wrap { max-width: 920px; margin: 0 auto; padding: 28px 20px 80px; }
 
-  /* masthead */
   .mast { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding-bottom: 14px; border-bottom: 2px solid var(--ink); margin-bottom: 28px; }
   .brand { font: 600 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
   .date { font: 400 12px/1 var(--mono); color: var(--ink-3); letter-spacing: .04em; }
   h1 { margin: 0 0 6px; font-size: clamp(1.5rem, 4.2vw, 2.1rem); line-height: 1.2; letter-spacing: -0.035em; font-weight: 700; }
   .lede { margin: 0 0 24px; color: var(--ink-2); max-width: 58ch; }
 
-  /* instrument */
-  .instrument {
-    position: relative; overflow: hidden; color: var(--p-ink);
-    background: var(--panel); border-radius: 22px; padding: 28px 30px 26px;
-    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.055) 1px, transparent 0);
-    background-size: 22px 22px;
-    box-shadow: 0 30px 60px -30px rgba(0,0,0,.55);
-  }
-  .instrument[data-state="stale"] { --state: var(--stale); }
-  .instrument[data-state="fallback"] { --state: var(--fail); }
-
+  /* ---------- live instrument ---------- */
+  .instrument { position: relative; overflow: hidden; color: var(--p-ink); background: var(--panel); border-radius: 22px; padding: 28px 30px 26px;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.055) 1px, transparent 0); background-size: 22px 22px; box-shadow: 0 30px 60px -30px rgba(0,0,0,.55); }
+  .instrument[data-tone="amber"] { --state: var(--amber); } .instrument[data-tone="red"] { --state: var(--red); }
+  .instrument[data-tone="slate"] { --state: var(--slate); } .instrument[data-tone="violet"] { --state: var(--violet); }
   .i-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
   .i-label, .m-title, .prov h3, .cell .k { letter-spacing: .03em !important; }
-  .i-label { font: 500 12px/1 var(--mono); letter-spacing: .1em; color: var(--p-ink-3); text-transform: uppercase; }
+  .i-label { font: 500 12px/1 var(--mono); color: var(--p-ink-3); text-transform: uppercase; }
   .chip { display: inline-flex; align-items: center; gap: 9px; padding: 7px 14px 7px 12px; border-radius: 999px; font-size: .8rem; font-weight: 600; color: var(--state); border: 1px solid color-mix(in srgb, var(--state) 40%, transparent); background: color-mix(in srgb, var(--state) 10%, transparent); }
   .chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--state); }
-  [data-state="fresh"] .chip i { animation: blink 2.4s ease-in-out infinite; }
+  .instrument[data-state="fresh"] .chip i { animation: blink 2.4s ease-in-out infinite; }
   @keyframes blink { 50% { opacity: .35; } }
-  @media (prefers-reduced-motion: reduce) { [data-state="fresh"] .chip i { animation: none; } }
-
+  @media (prefers-reduced-motion: reduce) { .instrument[data-state="fresh"] .chip i { animation: none; } }
   .reading { margin: 26px 0 6px; display: flex; align-items: flex-end; flex-wrap: wrap; gap: 4px 18px; }
   .num { font: 700 clamp(3.4rem, 13vw, 6.6rem)/0.95 var(--num); letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+  .instrument[data-state="stale"] .num { color: color-mix(in srgb, var(--p-ink) 78%, var(--state)); }
   .u { padding-bottom: .7em; font-size: 1rem; color: var(--p-ink-2); }
   .u b { color: var(--p-ink); font-weight: 600; }
+  .oldtag { align-self: center; padding: 6px 11px; border-radius: 8px; font: 600 .78rem/1 var(--sans); color: #1a1408; background: var(--state); }
+  .oldtag[hidden] { display: none; }
   .mean { margin: 0; font-size: .85rem; color: var(--p-ink-3); }
-  .banner { margin: 18px 0 0; padding: 12px 14px; border-radius: 10px; font-size: .9rem; color: var(--state); background: color-mix(in srgb, var(--state) 9%, transparent); border: 1px solid color-mix(in srgb, var(--state) 30%, transparent); }
-  .banner[hidden] { display: none; }
 
-  /* freshness meter */
+  /* failure block (used in the live board and in the lab) */
+  .fail { margin-top: 18px; border-radius: 14px; padding: 16px 18px 18px; border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent); background: color-mix(in srgb, var(--tone) 9%, transparent); --tone: var(--amber); }
+  .fail[data-tone="amber"] { --tone: var(--t-amber); } .fail[data-tone="red"] { --tone: var(--t-red); } .fail[data-tone="slate"] { --tone: var(--t-slate); } .fail[data-tone="violet"] { --tone: var(--t-violet); }
+  .instrument .fail[data-tone="amber"] { --tone: var(--amber); } .instrument .fail[data-tone="red"] { --tone: var(--red); } .instrument .fail[data-tone="slate"] { --tone: var(--slate); } .instrument .fail[data-tone="violet"] { --tone: var(--violet); }
+  .fail[hidden] { display: none; }
+  .f-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .f-glyph { font-size: 1.15rem; line-height: 1; }
+  .f-kind { font-weight: 700; color: var(--tone); }
+  .f-code { font: 600 .72rem/1 var(--mono); padding: 4px 8px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--tone) 50%, transparent); color: var(--tone); }
+  .f-title { margin: 8px 0 4px; font-weight: 700; font-size: 1.05rem; }
+  .f-what { margin: 0 0 12px; font-size: .92rem; opacity: .92; }
+  .f-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; font-size: .88rem; }
+  .f-cols h4 { margin: 0 0 4px; font: 600 .72rem/1.2 var(--mono); letter-spacing: .04em; color: var(--tone); }
+  .f-cols ul { margin: 0; padding-left: 1.1em; } .f-cols li { margin: 2px 0; }
+  .f-cols .none { opacity: .6; }
+  .f-foot { margin-top: 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .btn { border: 0; border-radius: 10px; padding: 10px 18px; font-weight: 700; font-size: .92rem; background: var(--tone); color: #16110a; }
+  .btn:hover { filter: brightness(1.08); } .btn:disabled { opacity: .5; cursor: wait; }
+  .f-note { font-size: .8rem; opacity: .75; }
+
   .meter { margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--panel-line); }
   .m-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 30px; }
-  .m-title { font: 500 12px/1 var(--mono); letter-spacing: .1em; color: var(--p-ink-3); text-transform: uppercase; }
-  .m-age { font-size: .95rem; color: var(--p-ink); font-weight: 600; }
-  .m-age span { color: var(--p-ink-3); font-weight: 400; }
+  .m-title { font: 500 12px/1 var(--mono); color: var(--p-ink-3); text-transform: uppercase; }
+  .m-age { font-size: .95rem; color: var(--p-ink); font-weight: 600; } .m-age span { color: var(--p-ink-3); font-weight: 400; }
   .axis { position: relative; height: 10px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--panel-line); }
   .fill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; background: linear-gradient(90deg, color-mix(in srgb, var(--state) 35%, transparent), var(--state)); }
   .tick { position: absolute; top: 12px; width: 1px; height: 8px; background: var(--panel-line); }
@@ -94,114 +94,146 @@
   .pin { position: absolute; top: -9px; width: 2px; height: 28px; background: var(--state); transform: translateX(-1px); }
   .pin::before { content: ""; position: absolute; top: 9px; left: 50%; width: 14px; height: 14px; transform: translateX(-50%); border-radius: 50%; background: var(--panel); border: 3px solid var(--state); }
   .pin label { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 600 11px/1 var(--mono); color: var(--state); }
-  .pin.l label { left: 0; transform: none; }
-  .pin.r label { left: auto; right: 0; transform: none; }
+  .pin.l label { left: 0; transform: none; } .pin.r label { left: auto; right: 0; transform: none; }
   .ends { display: flex; justify-content: space-between; gap: 12px; margin-top: 34px; font: 400 11px/1.4 var(--mono); color: var(--p-ink-2); }
-  .ends b { display: block; color: var(--p-ink); font-weight: 500; font-size: 12.5px; }
-  .ends div:last-child { text-align: right; }
-
-  /* provenance */
-  .prov { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 26px; border-top: 1px solid var(--panel-line); }
-  .prov > div { padding: 16px 16px 0 0; }
-  .prov > div + div { padding-left: 16px; border-left: 1px solid var(--panel-line); }
-  .prov h3 { margin: 0 0 8px; font: 500 11px/1 var(--mono); letter-spacing: .1em; color: var(--p-ink-3); text-transform: uppercase; }
+  .ends b { display: block; color: var(--p-ink); font-weight: 500; font-size: 12.5px; } .ends div:last-child { text-align: right; }
+  .prov { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 26px; border-top: 1px solid var(--panel-line); }
+  .prov > div { padding: 16px 16px 0 0; } .prov > div + div { padding-left: 16px; border-left: 1px solid var(--panel-line); }
+  .prov h3 { margin: 0 0 8px; font: 500 11px/1 var(--mono); color: var(--p-ink-3); text-transform: uppercase; }
   .prov p { margin: 0; font: 500 .86rem/1.35 var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .prov p a { white-space: normal; font-size: .95rem; }
+  .prov p a { white-space: normal; font-size: .95rem; color: var(--p-ink); }
   .prov small { display: block; margin-top: 4px; font: 400 .75rem/1.4 var(--sans); color: var(--p-ink-3); }
-  .prov a { color: var(--p-ink); }
 
-  /* section heads */
+  /* ---------- sections ---------- */
   .sec { margin-top: 56px; }
   .sec-h { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
   .sec-h span { font: 600 12px/1 var(--mono); color: var(--ink-3); letter-spacing: .08em; }
   h2 { margin: 0; font-size: 1.25rem; letter-spacing: -0.03em; }
-  .sec-sub { margin: 0 0 20px; color: var(--ink-2); font-size: .92rem; max-width: 60ch; }
+  .sec-sub { margin: 0 0 20px; color: var(--ink-2); font-size: .92rem; max-width: 62ch; }
+  .rule { margin: 12px 2px 0; font-size: .82rem; color: var(--ink-3); }
 
-  /* ledger */
   .ledger { display: grid; grid-template-columns: 1fr 52px 1fr 52px 1fr; align-items: stretch; }
   .cell { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
-  .cell .k { font: 600 11px/1 var(--mono); letter-spacing: .1em; color: var(--ink-3); text-transform: uppercase; }
-  .cell h3 { margin: 8px 0 2px; font-size: 1rem; }
-  .cell .f { font: 400 11.5px/1.4 var(--mono); color: var(--ink-3); word-break: break-all; }
+  .cell .k { font: 600 11px/1 var(--mono); color: var(--ink-3); text-transform: uppercase; }
+  .cell h3 { margin: 8px 0 2px; font-size: 1rem; } .cell .f { font: 400 11.5px/1.4 var(--mono); color: var(--ink-3); word-break: break-all; }
   .cell .v { margin: 14px 0 10px; font: 700 1.6rem/1.1 var(--num); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; word-break: break-all; }
   .cell .d { font: 400 11.5px/1.65 var(--mono); color: var(--ink-2); word-break: break-all; }
   .link { position: relative; display: grid; place-items: center; }
   .link::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 2px dotted var(--ink-3); opacity: .5; }
   .link b { position: relative; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--paper); font: 600 13px/1 var(--mono); }
   .verdict { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; padding: 14px 18px; border-radius: 12px; background: var(--ink); color: var(--paper); font-weight: 600; }
-  .verdict .ok { color: #7bd23a; }
-  @media (prefers-color-scheme: dark) { .verdict .ok { color: #5f9e2c; } }
-  .verdict.bad { background: #8a1f14; color: #fff; }
-  .verdict .diff { font: 500 .8rem/1 var(--mono); opacity: .8; }
-  .rule { margin: 12px 2px 0; font-size: .82rem; color: var(--ink-3); }
-
-  /* legend */
-  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
-  .lg { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px 18px; }
-  .lg .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
-  .lg h3 { margin: 0 0 6px; font-size: .95rem; display: flex; align-items: center; }
-  .lg p { margin: 0; font-size: .84rem; color: var(--ink-2); line-height: 1.5; }
-  .lg .tag { position: absolute; top: 14px; right: 14px; font: 600 10px/1 var(--mono); letter-spacing: .06em; padding: 4px 7px; border-radius: 5px; background: var(--line); color: var(--ink-2); }
-  .lg.now { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink) inset; }
-  .lg.now .tag { background: var(--ink); color: var(--paper); }
-  .d-fresh { background: #7bd23a; } .d-stale { background: #f0a020; } .d-fail { background: #ee5a48; } .d-out { background: var(--ink-3); }
-
+  .verdict .ok { color: #7bd23a; } @media (prefers-color-scheme: dark) { .verdict .ok { color: #5f9e2c; } }
+  .verdict.bad { background: #8a1f14; color: #fff; } .verdict .diff { font: 500 .8rem/1 var(--mono); opacity: .8; }
   .err-box { margin-top: 12px; padding: 14px 16px; border-radius: 12px; background: color-mix(in srgb, #ee5a48 12%, var(--card)); border: 1px solid color-mix(in srgb, #ee5a48 40%, transparent); font-size: .92rem; }
 
-  footer { margin-top: 64px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--ink-3); font: 400 12px/1.6 var(--mono); display: flex; flex-wrap: wrap; gap: 6px 22px; }
+  /* ---------- synthetic lab ---------- */
+  .lab { border: 2px dashed var(--syn); border-radius: 22px; padding: 22px 22px 24px; background: color-mix(in srgb, var(--syn) 4%, var(--card)); }
+  .syn-tag { display: inline-flex; gap: 8px; align-items: center; font: 700 11px/1 var(--mono); letter-spacing: .08em; color: var(--syn); padding: 6px 10px; border: 1px solid var(--syn); border-radius: 6px; }
+  .lab-note { margin: 10px 0 0; font-size: .86rem; color: var(--ink-2); }
+  .ctl { margin-top: 18px; display: grid; gap: 14px; }
+  .ctl h4 { margin: 0 0 8px; font: 600 12px/1.2 var(--mono); color: var(--ink-3); letter-spacing: .04em; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .b { border: 1px solid var(--line); background: var(--paper); border-radius: 10px; padding: 9px 13px; font-size: .86rem; font-weight: 600; }
+  .b:hover { border-color: var(--ink); } .b.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .b small { display: block; font: 400 .7rem/1.3 var(--mono); opacity: .7; }
+  .b[data-tone="amber"] { border-left: 4px solid var(--t-amber); } .b[data-tone="red"] { border-left: 4px solid var(--t-red); }
+  .b[data-tone="slate"] { border-left: 4px solid var(--t-slate); } .b[data-tone="violet"] { border-left: 4px solid var(--t-violet); }
+  .b.all { border-style: dashed; }
 
+  .lb { margin-top: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .lb-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .lb-tag { font: 600 11px/1 var(--mono); color: var(--syn); }
+  .st { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-size: .8rem; font-weight: 700; border: 1px solid var(--line); }
+  .st i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+  .st.fresh { color: var(--t-ok); border-color: color-mix(in srgb, var(--t-ok) 45%, transparent); } .st.fresh i { background: var(--t-ok); }
+  .st[data-tone="amber"] { color: var(--t-amber); border-color: color-mix(in srgb, var(--t-amber) 50%, transparent); } .st[data-tone="amber"] i { background: var(--t-amber); }
+  .st[data-tone="red"] { color: var(--t-red); border-color: color-mix(in srgb, var(--t-red) 50%, transparent); } .st[data-tone="red"] i { background: var(--t-red); }
+  .st[data-tone="slate"] { color: var(--t-slate); border-color: color-mix(in srgb, var(--t-slate) 50%, transparent); } .st[data-tone="slate"] i { background: var(--t-slate); }
+  .st[data-tone="violet"] { color: var(--t-violet); border-color: color-mix(in srgb, var(--t-violet) 50%, transparent); } .st[data-tone="violet"] i { background: var(--t-violet); }
+  .lb-val { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; margin: 14px 0 4px; }
+  .lb-num { font: 700 3.2rem/1 var(--num); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .lb-unit { color: var(--ink-2); }
+  .old { padding: 5px 10px; border-radius: 7px; font: 700 .76rem/1 var(--sans); color: #1a1408; background: var(--t-amber); }
+  @media (prefers-color-scheme: dark) { .old { background: #ffb84d; } }
+  .lb-meta { margin: 6px 0 0; font: 400 .8rem/1.6 var(--mono); color: var(--ink-2); }
+  .rows { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: .84rem; }
+  .rows th, .rows td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .rows th { font: 600 .7rem/1 var(--mono); color: var(--ink-3); }
+  .rows td.mono { font-family: var(--mono); font-size: .78rem; }
+  .newrow { display: inline-block; margin-left: 6px; padding: 2px 6px; border-radius: 5px; background: var(--t-ok); color: #fff; font: 700 .68rem/1.2 var(--sans); }
+  @media (prefers-color-scheme: dark) { .newrow { color: #10210a; } }
+  .delta { margin-top: 10px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .recov { margin-top: 14px; padding: 11px 14px; border-radius: 10px; background: color-mix(in srgb, var(--t-ok) 12%, transparent); border: 1px solid color-mix(in srgb, var(--t-ok) 40%, transparent); font-size: .88rem; color: var(--ink); }
+  .recov b { color: var(--t-ok); }
+
+  .chk { margin-top: 14px; }
+  .chk summary { cursor: pointer; font-weight: 600; font-size: .88rem; }
+  .chk table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: .8rem; }
+  .chk th, .chk td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); font-family: var(--mono); }
+  .ok-t { color: var(--t-ok); font-weight: 700; } .no-t { color: var(--t-red); font-weight: 700; }
+
+  .allbox { margin-top: 18px; }
+  .allbox table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  .allbox th, .allbox td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .allbox th { font: 600 .7rem/1.2 var(--mono); color: var(--ink-3); }
+  .allbox td small { display: block; color: var(--ink-3); font: 400 .72rem/1.3 var(--mono); }
+  .tblwrap { overflow-x: auto; }
+
+  /* package check */
+  .pk { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .pk dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; margin: 0; font-size: .88rem; }
+  .pk dt { color: var(--ink-3); } .pk dd { margin: 0; font: 500 .8rem/1.5 var(--mono); word-break: break-all; }
+  .pk .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+  .bd { padding: 6px 11px; border-radius: 8px; font-size: .8rem; font-weight: 700; background: color-mix(in srgb, var(--t-ok) 13%, transparent); color: var(--t-ok); border: 1px solid color-mix(in srgb, var(--t-ok) 40%, transparent); }
+  .bd.bad { background: color-mix(in srgb, var(--t-red) 13%, transparent); color: var(--t-red); border-color: color-mix(in srgb, var(--t-red) 40%, transparent); }
+  .pk details { margin-top: 12px; } .pk summary { cursor: pointer; font-weight: 600; font-size: .88rem; }
+  .pk table { width: 100%; border-collapse: collapse; margin-top: 8px; font: 400 .74rem/1.4 var(--mono); }
+  .pk th, .pk td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); word-break: break-all; }
+  .pk th { color: var(--ink-3); font-weight: 600; }
+
+  footer { margin-top: 64px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--ink-3); font: 400 12px/1.6 var(--mono); display: flex; flex-wrap: wrap; gap: 6px 22px; }
   .sk { display: inline-block; width: 6ch; height: .8em; border-radius: 8px; background: linear-gradient(90deg, var(--panel-2), var(--panel-line), var(--panel-2)); background-size: 200% 100%; animation: sh 1.4s infinite; }
   @keyframes sh { to { background-position: -200% 0; } }
 
   @media (max-width: 760px) {
     .wrap { padding: 20px 14px 64px; }
     .instrument { padding: 22px 18px 20px; border-radius: 18px; }
-    .prov { grid-template-columns: 1fr 1fr; }
+    .prov { grid-template-columns: 1fr 1fr; } .prov > div { padding: 14px 12px 0 0; }
+    .prov > div:nth-child(3) { padding-left: 0; border-left: 0; } .prov > div:nth-child(n+3) { border-top: 1px solid var(--panel-line); margin-top: 14px; }
     .prov p { white-space: normal; overflow-wrap: anywhere; }
-    .prov > div { padding: 14px 12px 0 0; }
-    .prov > div:nth-child(3) { padding-left: 0; border-left: 0; }
-    .prov > div:nth-child(n+3) { border-top: 1px solid var(--panel-line); margin-top: 14px; }
-    .ledger { grid-template-columns: 1fr; }
-    .link { height: 40px; }
+    .ledger { grid-template-columns: 1fr; } .link { height: 40px; }
     .link::before { left: 50%; right: auto; top: 0; bottom: 0; border-top: 0; border-left: 2px dotted var(--ink-3); }
+    .f-cols { grid-template-columns: 1fr; }
+    .lab { padding: 16px 14px 18px; } .lb { padding: 16px 14px; } .lb-num { font-size: 2.6rem; }
+    .pk dl { grid-template-columns: 1fr; gap: 2px; } .pk dd { margin-bottom: 8px; }
   }
 </style>
 </head>
 <body>
 <main class="wrap">
-  <div class="mast">
-    <span class="brand">Daily Board / 04</span>
-    <span class="date" id="today">—</span>
-  </div>
-
+  <div class="mast"><span class="brand">Daily Board / 04</span><span class="date" id="today">—</span></div>
   <h1>오늘의 원/달러 환율</h1>
-  <p class="lede">달러 1개를 사는 데 필요한 원화입니다. 숫자보다 먼저, 이 값이 얼마나 오래됐고 어디서 왔는지를 보여줍니다.</p>
+  <p class="lede">달러 1개를 사는 데 필요한 원화입니다. 숫자보다 먼저, 이 값이 얼마나 오래됐고 어디서 왔는지, 그리고 값이 안 올 때 무슨 일이 생겼는지를 보여줍니다.</p>
 
-  <section class="instrument" id="inst" data-state="loading" aria-labelledby="i-label">
+  <!-- ===== live board ===== -->
+  <section class="instrument" id="inst" data-state="loading" data-tone="" aria-labelledby="i-label">
     <div class="i-top">
       <span class="i-label" id="i-label">USD/KRW · 지금 조회한 값</span>
       <span class="chip"><i></i><span id="chip-text">조회 중</span></span>
     </div>
-
     <div class="reading">
       <span class="num" id="num"><span class="sk"></span></span>
       <span class="u"><b>원</b> / 1 USD</span>
+      <span class="oldtag" id="oldtag" hidden>오래된 값</span>
     </div>
     <p class="mean">단위 KRW per 1 USD · 달러 1개당 원화 · 소수 둘째 자리까지 표시</p>
-    <p class="banner" id="banner" hidden></p>
+    <div class="fail" id="live-fail" hidden></div>
 
     <div class="meter">
-      <div class="m-head">
-        <span class="m-title">값의 나이 · 출처 갱신 주기 안에서</span>
-        <span class="m-age" id="age">—</span>
-      </div>
+      <div class="m-head"><span class="m-title">값의 나이 · 출처 갱신 주기 안에서</span><span class="m-age" id="age">—</span></div>
       <div class="axis" id="axis" role="img" aria-label="출처 갱신 시각부터 다음 갱신 예정 시각까지의 진행 상황"></div>
-      <div class="ends">
-        <div><b id="e-src">—</b>출처 갱신</div>
-        <div><b id="e-next">—</b>다음 갱신 예정</div>
-      </div>
+      <div class="ends"><div><b id="e-src">—</b>출처 갱신</div><div><b id="e-next">—</b>다음 갱신 예정</div></div>
     </div>
-
     <div class="prov">
       <div><h3>출처</h3><p><a id="p-src" href="https://open.er-api.com/v6/latest/USD">ExchangeRate-API</a></p><small>키·로그인 없는 공개 API</small></div>
       <div><h3>출처 시각</h3><p id="p-srct">—</p><small>출처가 값을 갱신한 때</small></div>
@@ -210,6 +242,7 @@
     </div>
   </section>
 
+  <!-- ===== 01 ledger ===== -->
   <section class="sec">
     <div class="sec-h"><span>01</span><h2>정상 한 건 대조</h2></div>
     <p class="sec-sub">받은 그대로의 원자료, 저장한 값, 화면에 보이는 값이 같은지 확인합니다.</p>
@@ -217,154 +250,308 @@
     <p class="rule">화면값 규칙: 저장값(전체 자릿수)을 소수 둘째 자리까지 반올림해 표시합니다.</p>
   </section>
 
+  <!-- ===== 02 lab ===== -->
   <section class="sec">
-    <div class="sec-h"><span>02</span><h2>상태 읽는 법</h2></div>
-    <p class="sec-sub">이 정보판은 값이 잘 올 때보다 안 올 때를 정직하게 말하는 데 신경 씁니다.</p>
-    <div class="legend" id="legend">
-      <div class="lg" data-k="fresh"><span class="tag">지금</span><h3><span class="dot d-fresh"></span>정상</h3><p>출처가 예정대로 갱신했고 조회에 성공했습니다.</p></div>
-      <div class="lg" data-k="stale"><span class="tag">지금</span><h3><span class="dot d-stale"></span>오래된 값</h3><p>다음 갱신 예정 시각이 지났는데 값이 그대로입니다. 숫자는 보이되 늦었다고 알립니다.</p></div>
-      <div class="lg" data-k="fallback"><span class="tag">지금</span><h3><span class="dot d-fail"></span>조회 실패</h3><p>값을 못 받으면 마지막 정상값과 그 조회 시각을 그대로 보여줍니다.</p></div>
-      <div class="lg" data-k="out"><span class="tag">예정</span><h3><span class="dot d-out"></span>이상치</h3><p>평소 범위를 크게 벗어나면 확정하지 않고 경고합니다. 다음 단계에서 재생합니다.</p></div>
+    <div class="sec-h"><span>02</span><h2>데이터가 안 올 때 — 다섯 가지 실패</h2></div>
+    <p class="sec-sub">실패는 한 가지가 아닙니다. 원인마다 화면이 다르게 말하고, 사용자가 할 수 있는 다음 행동도 다릅니다. 아래 시험대는 공개 합성 데이터로 다섯 실패를 그대로 재생합니다.</p>
+    <div class="lab" id="lab">
+      <span class="syn-tag">SYNTHETIC · 합성 시험값</span>
+      <p class="lab-note">이 영역의 숫자(pt, 2026-08-24 등)는 <b>실제 환율이 아니라 시험용 가짜 값</b>입니다. 위의 실제 환율이나 실제 날짜 기록을 대신하지 않습니다.</p>
+      <div class="ctl">
+        <div><h4>실패 재생 · 초기화 → 정상 D1-A(100) → D1-B(105) → 실패 순서로 자동 실행</h4>
+          <div class="btns" id="fail-btns"></div></div>
+        <div><h4>정상 흐름 · 한 단계씩</h4>
+          <div class="btns" id="step-btns"></div></div>
+      </div>
+      <div class="lb" id="lab-board"></div>
+      <div id="lab-check"></div>
+      <div class="allbox"><button class="b all" id="run-all">다섯 실패를 모두 재생해 한꺼번에 검증하기</button><div id="all-result" class="tblwrap"></div></div>
     </div>
   </section>
 
+  <!-- ===== 03 package ===== -->
+  <section class="sec">
+    <div class="sec-h"><span>03</span><h2>공개 자산 확인</h2></div>
+    <p class="sec-sub">시험대가 쓰는 fixture는 과제가 공개한 패키지 그대로입니다. 이 화면이 패키지 ZIP을 직접 열어 파일마다 SHA-256을 계산하고 공개 매니페스트와 맞춰 봅니다.</p>
+    <div class="pk" id="pk">불러오는 중…</div>
+  </section>
+
   <footer>
-    <span>개인정보·로그인·비밀키 없음</span>
-    <span>데이터 ExchangeRate-API</span>
+    <span>개인정보·로그인·비밀키 없음</span><span>실제 데이터 ExchangeRate-API</span><span>시험 데이터 공개 합성 fixture</span>
     <a href="https://github.com/terran1234/daily-board-04">소스 보기</a>
   </footer>
 </main>
 
+<script src="engine.js"></script>
 <script>
 const API = 'https://open.er-api.com/v6/latest/USD';
+const ZIP = 't04-public.zip';
 const TZ = 'Asia/Seoul';
 const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtValue = v => Number(v).toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const P = d => Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
-  timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hourCycle:'h23'
-}).formatToParts(d).map(p => [p.type, p.value]));
+const P = d => Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hourCycle:'h23' }).formatToParts(d).map(p => [p.type, p.value]));
 const fDate = d => { const p = P(d); return `${p.year}-${p.month}-${p.day}`; };
 const fClock = d => { const p = P(d); return `${p.hour}:${p.minute}:${p.second}`; };
 const fHM = d => { const p = P(d); return `${p.hour}:${p.minute}`; };
 const fShort = d => { const p = P(d); return `${p.month}/${p.day} ${p.hour}:${p.minute}`; };
 const fFull = d => `${fDate(d)} ${fClock(d)} KST`;
-function span(ms) {
-  const m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60), r = m % 60;
-  if (m < 1) return '1분 미만';
-  return (h ? `${h}시간 ` : '') + (r ? `${r}분` : '').trim();
+function span(ms) { const m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60), r = m % 60; if (m < 1) return '1분 미만'; return ((h ? h + '시간 ' : '') + (r ? r + '분' : '')).trim(); }
+const num = n => String(n);
+const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n);
+
+/* failure block shared by the live board and the lab */
+function failureHTML(status, run, retryId, retryLabel) {
+  const F = T04.FAILURES[status.error_code];
+  const what = F.what(run && run.detail, run && run.retry_after_seconds);
+  const list = a => a.length ? '<ul>' + a.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>' : '<p class="none" style="margin:0">할 일이 없어요.</p>';
+  return `
+    <div class="f-head"><span class="f-glyph" aria-hidden="true">${F.glyph}</span><span class="f-kind">${esc(F.label)} · ${esc(F.short)}</span><span class="f-code">error_code: ${esc(status.error_code)}</span></div>
+    <p class="f-title">${esc(F.headline)}</p>
+    <p class="f-what">${esc(what)}</p>
+    <div class="f-cols">
+      <div><h4>지금 할 수 있는 일</h4>${list(F.user)}</div>
+      <div><h4>운영자가 할 일 · 원인: ${esc(F.fault)}</h4>${list(F.operator)}</div>
+    </div>
+    <div class="f-foot"><button class="btn" id="${retryId}">${esc(retryLabel)}</button><span class="f-note">마지막 정상값은 지우지 않고 그대로 두었습니다.</span></div>`;
 }
 
-/* ---- 화면 그리기: 모델 하나를 받아 계기판을 채운다 ---- */
-function render(m) {
+/* ================= live board ================= */
+let LIVE_NEXT = null;
+
+async function loadStored() {
+  const stored = await (await fetch('data/latest.json', { cache: 'no-store' })).json();
+  const rawText = await (await fetch(`data/raw/${stored.kst_date}.json`, { cache: 'no-store' })).text();
+  return { stored, raw: JSON.parse(rawText) };
+}
+function readingFromStored(st) {
+  return { signal_id: 'usd-krw', normalized_value: st.value, unit: st.unit, source_name: 'ExchangeRate-API', source_url: st.source_url,
+    source_time: new Date(st.source_time_utc).toISOString(), fetched_at: new Date(st.fetched_at_utc).toISOString(), record_timezone: 'Asia/Seoul', record_date: st.kst_date };
+}
+async function fetchLive() {
+  const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 8000);
+  let res;
+  try { res = await fetch(API, { cache: 'no-store', signal: ctrl.signal }); }
+  catch (e) { throw Object.assign(new Error(e.message), { failure: T04.classifyFetchFailure(e, null) }); }
+  finally { clearTimeout(timer); }
+  const fetchedAt = new Date();
+  if (!res.ok) throw Object.assign(new Error('HTTP ' + res.status), { failure: T04.classifyFetchFailure(null, res) });
+  let j;
+  try { j = await res.json(); } catch (e) { throw Object.assign(new Error('JSON 해석 실패'), { failure: { code: 'schema_error', detail: 'JSON 해석 실패' } }); }
+  const unix = j && j.time_last_update_unix;
+  return {
+    next: j && j.time_next_update_unix ? new Date(j.time_next_update_unix * 1000) : null,
+    reading: { signal_id: 'usd-krw', normalized_value: j && j.rates ? j.rates.KRW : undefined, unit: 'KRW per 1 USD', source_name: 'ExchangeRate-API', source_url: API,
+      source_time: unix ? new Date(unix * 1000).toISOString() : null, fetched_at: fetchedAt.toISOString(), record_timezone: 'Asia/Seoul', record_date: T04.kstDate(fetchedAt.toISOString()) }
+  };
+}
+
+async function refreshLive() {
   const inst = $('inst');
-  const state = m.mode === 'stored' ? 'fallback' : (m.fetched >= m.next ? 'stale' : 'fresh');
-  inst.dataset.state = state;
-  $('chip-text').textContent = { fresh: '정상 · 실시간 조회', stale: '오래된 값 · 갱신 지연', fallback: '조회 실패 · 마지막 정상값' }[state];
-  $('i-label').textContent = state === 'fallback' ? 'USD/KRW · 마지막 정상값' : 'USD/KRW · 지금 조회한 값';
-  $('num').textContent = fmtValue(m.value);
+  inst.dataset.state = 'loading'; $('chip-text').textContent = '조회 중';
+  let state = T04.resetState(), next = null, stored = null;
+  try {   // last good value = the recorded normal reading
+    const s = await loadStored(); stored = s;
+    state = T04.applySuccessfulReading(state, readingFromStored(s.stored));
+    next = new Date(s.raw.time_next_update_unix * 1000);
+  } catch (_) {}
+  try {
+    const live = await fetchLive();
+    try { state = T04.applySuccessfulReading(state, live.reading); if (live.next) next = live.next; }
+    catch (e) { throw Object.assign(e, { failure: { code: 'schema_error', detail: e.message } }); }
+  } catch (e) {
+    const f = e.failure || T04.classifyFetchFailure(e, null);
+    state = T04.applyError(state, f.code, { detail: f.detail, retry_after_seconds: f.retry_after || null });
+  }
+  LIVE_NEXT = next;
+  paintLive(state, next);
+}
 
-  const b = $('banner');
-  if (state === 'fallback') {
-    b.hidden = false;
-    b.textContent = `지금은 값을 가져오지 못했습니다(${m.error}). 아래 숫자는 ${fFull(m.fetched)}에 받은 마지막 정상값입니다.`;
-  } else if (state === 'stale') {
-    b.hidden = false;
-    b.textContent = '출처의 다음 갱신 예정 시각이 지났지만 값이 바뀌지 않았습니다. 이 숫자는 낡았을 수 있습니다.';
-  } else b.hidden = true;
-
-  // 신선도 축: 출처 갱신 → 다음 갱신 예정, 그 안에서 조회 시각의 위치
-  const total = m.next - m.src, raw = (m.fetched - m.src) / total, pos = Math.min(1, Math.max(0, raw));
+function paintLive(state, next) {
+  const inst = $('inst'), st = state.status, cur = state.current_reading, stale = st && st.freshness === 'stale';
+  const F = stale ? T04.FAILURES[st.error_code] : null;
+  inst.dataset.state = stale ? 'stale' : 'fresh';
+  inst.dataset.tone = stale ? F.tone : '';
+  $('chip-text').textContent = stale ? `${F.label} · ${F.short} · 마지막 정상값` : '정상 · 실시간 조회';
+  $('i-label').textContent = stale ? 'USD/KRW · 마지막 정상값' : 'USD/KRW · 지금 조회한 값';
+  $('num').textContent = cur ? fmtValue(cur.normalized_value) : '—';
+  $('oldtag').hidden = !stale || !cur;
+  const box = $('live-fail');
+  if (stale) {
+    box.hidden = false; box.dataset.tone = F.tone;
+    box.innerHTML = failureHTML(st, state.last_run, 'retry-live', '다시 시도');
+    $('retry-live').onclick = async ev => { ev.target.disabled = true; ev.target.textContent = '다시 조회하는 중…'; await refreshLive(); };
+  } else { box.hidden = true; box.innerHTML = ''; }
+  if (!cur) { $('age').textContent = '보여 줄 마지막 정상값이 없습니다'; return; }
+  const src = cur.source_time ? new Date(cur.source_time) : new Date(cur.fetched_at), fetched = new Date(cur.fetched_at);
+  const nx = next || new Date(src.getTime() + 24 * 3600e3);
+  const total = nx - src, pos = Math.min(1, Math.max(0, (fetched - src) / total));
   const H6 = 6 * 3600e3, OFF = 9 * 3600e3;
   let ticks = '';
-  for (let t = Math.ceil((m.src.getTime() + OFF) / H6) * H6 - OFF; t < m.next.getTime(); t += H6) {
-    const x = (t - m.src) / total;
+  for (let t = Math.ceil((src.getTime() + OFF) / H6) * H6 - OFF; t < nx.getTime(); t += H6) {
+    const x = (t - src) / total;
     if (x < 0.04 || x > 0.96 || Math.abs(x - pos) < 0.05) continue;
     ticks += `<span class="tick" style="left:${x * 100}%"><em>${fHM(new Date(t))}</em></span>`;
   }
   const cls = pos < 0.14 ? 'l' : pos > 0.86 ? 'r' : '';
-  $('axis').innerHTML = `<span class="fill" style="width:${pos * 100}%"></span>${ticks}` +
-    `<span class="pin ${cls}" style="left:${pos * 100}%"><label>${state === 'fallback' ? '마지막 조회' : '조회'} ${fHM(m.fetched)}</label></span>`;
-
-  const age = m.fetched - m.src, left = m.next - m.fetched;
-  $('age').innerHTML = `${span(age)} 전에 갱신된 값 <span>· ${left > 0 ? `다음 갱신까지 ${span(left)}` : `예정보다 ${span(-left)} 지연`}</span>`;
-  $('e-src').textContent = fShort(m.src);
-  $('e-next').textContent = fShort(m.next);
-
-  $('p-srct').textContent = fFull(m.src).replace(' KST', '');
-  $('p-fetch').textContent = fFull(m.fetched).replace(' KST', '');
-  $('p-fetch-h').textContent = state === 'fallback' ? '마지막 정상 조회' : '조회 시각';
-  $('p-fetch-s').textContent = state === 'fallback' ? '지금 시도는 실패했습니다' : '이 화면이 값을 받아온 때';
-
-  document.querySelectorAll('.lg').forEach(el => el.classList.toggle('now', el.dataset.k === state));
+  $('axis').innerHTML = `<span class="fill" style="width:${pos * 100}%"></span>${ticks}<span class="pin ${cls}" style="left:${pos * 100}%"><label>${stale ? '마지막 정상 조회' : '조회'} ${fHM(fetched)}</label></span>`;
+  const ageMs = (stale ? Date.now() : fetched.getTime()) - src.getTime(), left = nx - (stale ? Date.now() : fetched.getTime());
+  $('age').innerHTML = stale
+    ? `출처가 ${span(ageMs)} 전에 갱신한 값 <span>· 오래된 값</span>`
+    : `${span(ageMs)} 전에 갱신된 값 <span>· ${left > 0 ? '다음 갱신까지 ' + span(left) : '예정보다 ' + span(-left) + ' 지연'}</span>`;
+  $('e-src').textContent = fShort(src); $('e-next').textContent = fShort(nx);
+  $('p-srct').textContent = fFull(src).replace(' KST', '');
+  $('p-fetch').textContent = fFull(fetched).replace(' KST', '');
+  $('p-fetch-h').textContent = stale ? '마지막 정상 조회' : '조회 시각';
+  $('p-fetch-s').textContent = stale ? '이번 시도는 실패했습니다' : '이 화면이 값을 받아온 때';
 }
 
-async function liveModel() {
-  const r = await fetch(API, { cache: 'no-store' });
-  const fetched = new Date();
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  const j = await r.json();
-  if (j.result !== 'success' || typeof j.rates?.KRW !== 'number') throw new Error('응답 형식 이상');
-  return { mode: 'live', value: j.rates.KRW, src: new Date(j.time_last_update_unix * 1000),
-           next: new Date(j.time_next_update_unix * 1000), fetched };
-}
-
-async function storedRecord() {
-  const stored = await (await fetch('data/latest.json', { cache: 'no-store' })).json();
-  const raw = JSON.parse(await (await fetch(`data/raw/${stored.kst_date}.json`, { cache: 'no-store' })).text());
-  return { stored, raw };
-}
-
-async function main() {
-  $('today').textContent = fDate(new Date()) + ' KST';
-  try {
-    render(await liveModel());
-  } catch (e) {
-    try {
-      const { stored, raw } = await storedRecord();
-      render({ mode: 'stored', value: stored.value, src: new Date(stored.source_time_utc),
-               next: new Date(raw.time_next_update_unix * 1000), fetched: new Date(stored.fetched_at_utc), error: e.message });
-    } catch (e2) {
-      $('inst').dataset.state = 'fallback';
-      $('chip-text').textContent = '조회 실패 · 저장값도 없음';
-      $('num').textContent = '—';
-      const b = $('banner'); b.hidden = false; b.textContent = `값을 가져오지 못했고 보여줄 마지막 정상값도 없습니다. (${e.message})`;
-    }
-  }
-  loadLedger();
-}
-
+/* ================= ledger ================= */
 async function loadLedger() {
   const box = $('ledger');
   try {
-    const { stored, raw } = await storedRecord();
+    const { stored, raw } = await loadStored();
     const rawVal = raw.rates.KRW, rawSrc = new Date(raw.time_last_update_unix * 1000), storedSrc = new Date(stored.source_time_utc);
     const shown = fmtValue(stored.value);
-    const okVal = rawVal === stored.value && shown === fmtValue(rawVal);
-    const okTime = fFull(rawSrc) === fFull(storedSrc);
-    const ok = okVal && okTime;
+    const ok = rawVal === stored.value && shown === fmtValue(rawVal) && fFull(rawSrc) === fFull(storedSrc);
     box.innerHTML = `
       <div class="ledger">
-        <div class="cell"><span class="k">원자료</span><h3>받은 그대로</h3><div class="f">data/raw/${esc(stored.kst_date)}.json</div>
-          <div class="v">${rawVal}</div>
+        <div class="cell"><span class="k">원자료</span><h3>받은 그대로</h3><div class="f">data/raw/${esc(stored.kst_date)}.json</div><div class="v">${rawVal}</div>
           <div class="d">rates.KRW<br>time_last_update_unix<br>${raw.time_last_update_unix}<br>→ ${fFull(rawSrc)}</div></div>
         <div class="link"><b>=</b></div>
-        <div class="cell"><span class="k">저장값</span><h3>기록에 남긴 값</h3><div class="f">data/latest.json</div>
-          <div class="v">${stored.value}</div>
+        <div class="cell"><span class="k">저장값</span><h3>기록에 남긴 값</h3><div class="f">data/latest.json</div><div class="v">${stored.value}</div>
           <div class="d">source_time_kst<br>${esc(stored.source_time_kst)}<br>조회 ${esc(stored.fetched_at_kst)}</div></div>
         <div class="link"><b>=</b></div>
-        <div class="cell"><span class="k">화면값</span><h3>사람이 보는 값</h3><div class="f">${esc(stored.unit)}</div>
-          <div class="v">${shown}</div>
+        <div class="cell"><span class="k">화면값</span><h3>사람이 보는 값</h3><div class="f">${esc(stored.unit)}</div><div class="v">${shown}</div>
           <div class="d">출처 시각<br>${fFull(storedSrc)}<br>${esc(stored.timezone)}</div></div>
       </div>
-      <div class="verdict ${ok ? '' : 'bad'}"><span>${ok ? '<span class="ok">✓</span> 세 값이 일치합니다' : '✗ 값이 일치하지 않습니다'}</span><span class="diff">원자료 − 저장값 = ${(rawVal - stored.value)}</span></div>`;
-  } catch (e) {
-    box.innerHTML = `<div class="err-box"><b>저장된 기록을 읽지 못했습니다.</b> (${esc(e.message)})</div>`;
-  }
+      <div class="verdict ${ok ? '' : 'bad'}"><span>${ok ? '<span class="ok">✓</span> 세 값이 일치합니다' : '✗ 값이 일치하지 않습니다'}</span><span class="diff">원자료 − 저장값 = ${rawVal - stored.value}</span></div>`;
+  } catch (e) { box.innerHTML = `<div class="err-box"><b>저장된 기록을 읽지 못했습니다.</b> (${esc(e.message)})</div>`; }
 }
 
-main();
+/* ================= synthetic lab ================= */
+let PKG = null, LAB = { state: T04.resetState(), ids: {}, last: null, added: [] };
+const FAIL_ORDER = ['T04-TIMEOUT', 'T04-AUTH-401', 'T04-RATE-429', 'T04-OFFLINE', 'T04-SCHEMA-BREAK'];
+const FAIL_CODE = { 'T04-TIMEOUT': 'timeout', 'T04-AUTH-401': 'auth', 'T04-RATE-429': 'rate_limit', 'T04-OFFLINE': 'offline', 'T04-SCHEMA-BREAK': 'schema_error' };
+const STEPS = [['T04-NORMAL-D1-A', '① 정상 D1-A', '값 100 · 행 1'], ['T04-NORMAL-D1-B', '② 정상 D1-B', '값 105 · 같은 행 갱신'], ['T04-NORMAL-D2', '③ 정상 D2', '값 120 · 행 2 · +15']];
+
+function labApply(id) {
+  const fx = PKG.fixtures[id], before = LAB.state.daily_readings.map(r => r.record_id);
+  LAB.state = T04.runFixture(LAB.state, fx);
+  if (id === 'T04-NORMAL-D1-A') LAB.ids[id] = LAB.state.daily_readings[0].record_id;
+  LAB.added = LAB.state.daily_readings.map(r => r.record_id).filter(x => !before.includes(x));
+  LAB.last = { id, fx, result: T04.checkExpected(LAB.state, fx, { recordIds: LAB.ids }) };
+}
+function labReset() { LAB = { state: T04.resetState(), ids: {}, last: null, added: [] }; }
+function labFailure(id) { labReset(); labApply('T04-NORMAL-D1-A'); labApply('T04-NORMAL-D1-B'); labApply(id); LAB.active = id; }
+
+function paintLab() {
+  const s = LAB.state, cur = s.current_reading, st = s.status, stale = st && st.freshness === 'stale', F = stale ? T04.FAILURES[st.error_code] : null;
+  const box = $('lab-board');
+  if (!cur) {
+    box.innerHTML = `<div class="lb-top"><span class="lb-tag">SYNTHETIC · 시험 상태</span><span class="st">초기화됨</span></div>
+      <p style="margin:14px 0 0;color:var(--ink-2)">아직 값이 없습니다. 위에서 정상 흐름이나 실패 재생을 눌러 보세요.</p>`;
+    $('lab-check').innerHTML = ''; markBtns(); return;
+  }
+  const fetched = new Date(cur.fetched_at), run = s.last_run;
+  const rows = s.daily_readings.map(r => `<tr><td>${esc(r.record_date)}${LAB.added.includes(r.record_id) ? '<span class="newrow">새 기록</span>' : ''}</td><td>${num(r.normalized_value)} ${esc(r.unit)}</td>
+    <td class="mono">${esc(r.record_id)}</td><td class="mono">${fFull(new Date(r.last_fetched_at))}</td></tr>`).join('');
+  const cmp = s.last_comparison;
+  const delta = cmp.state === 'comparable' ? `전일 대비 <b>${signed(cmp.signed)} ${esc(cmp.unit)}</b> <span style="color:var(--ink-3)">(${cmp.previous_date} ${num(cmp.previous_value)} → ${cur.record_date} ${num(cur.normalized_value)})</span>` : '전일 대비: 비교할 전날 기록이 아직 없습니다';
+  let recov = '';
+  if (!stale && LAST_FAILURE && LAB.last && LAB.last.id === 'T04-RECOVER-D2') {
+    recov = `<div class="recov"><b>복구됨</b> · 상태 <b>fresh</b> / error_code <b>none</b> · 일별 기록 ${LAST_FAILURE.rows}건 → ${s.daily_readings.length}건 (다음 날짜 ${esc(cur.record_date)} 새 기록 ${LAB.added.length}건) · 저장값 ${num(cur.normalized_value)} ${esc(cur.unit)}</div>`;
+  }
+  box.innerHTML = `
+    <div class="lb-top"><span class="lb-tag">SYNTHETIC · ${esc(LAB.last.id)}</span>
+      <span class="st ${stale ? '' : 'fresh'}" ${stale ? `data-tone="${F.tone}"` : ''}><i></i>${stale ? `stale · ${esc(st.error_code)}` : 'fresh · none'}</span></div>
+    <div class="lb-val"><span class="lb-num">${num(cur.normalized_value)}</span><span class="lb-unit">${esc(cur.unit)}</span>${stale ? '<span class="old">오래된 값</span>' : ''}</div>
+    <p class="lb-meta">${esc(cur.source_name)} · ${esc(cur.source_url)}<br>
+      ${stale ? `마지막 정상 조회 ${fFull(fetched)} · 실패한 시도 ${run.virtual_now ? fFull(new Date(run.virtual_now)) : '—'}` : `조회 ${fFull(fetched)} · 출처 시각 ${cur.source_time ? fFull(new Date(cur.source_time)) : '없음'}`}<br>
+      기록 날짜 ${esc(cur.record_date)} (${esc(cur.record_timezone)})</p>
+    <p class="delta">${delta}</p>
+    <table class="rows"><tr><th>일별 기록</th><th>저장값</th><th>기록 ID</th><th>마지막 조회</th></tr>${rows}</table>
+    ${recov}
+    <div class="fail" id="lab-fail" ${stale ? `data-tone="${F.tone}"` : 'hidden'}>${stale ? failureHTML(st, run, 'retry-lab', '다시 시도') : ''}</div>`;
+  if (stale) {
+    LAST_FAILURE = { id: LAB.last.id, rows: s.daily_readings.length };
+    $('retry-lab').onclick = () => { labApply('T04-RECOVER-D2'); paintLab(); };
+  }
+  const r = LAB.last.result;
+  $('lab-check').innerHTML = `<details class="chk" ${r.ok ? '' : 'open'}><summary>이 단계의 기대값 대조 — ${r.ok ? '<span class="ok-t">모두 일치</span>' : '<span class="no-t">불일치 있음</span>'}</summary>
+    <table><tr><th>항목</th><th>fixture 기대값</th><th>실제 상태</th><th></th></tr>${r.checks.map(c => `<tr><td>${esc(c.name)}</td><td>${esc(JSON.stringify(c.want))}</td><td>${esc(JSON.stringify(c.got))}</td><td class="${c.ok ? 'ok-t' : 'no-t'}">${c.ok ? '✓' : '✗'}</td></tr>`).join('')}</table></details>`;
+  markBtns();
+}
+let LAST_FAILURE = null;
+function markBtns() { document.querySelectorAll('#fail-btns .b').forEach(b => b.classList.toggle('on', LAB.active === b.dataset.id && LAB.last && LAB.state.status && LAB.state.status.freshness === 'stale')); }
+
+function buildLabButtons() {
+  $('fail-btns').innerHTML = FAIL_ORDER.map(id => { const F = T04.FAILURES[FAIL_CODE[id]]; return `<button class="b" data-tone="${F.tone}" data-id="${id}">${F.glyph} ${esc(F.label)}<small>${esc(id)}</small></button>`; }).join('');
+  $('step-btns').innerHTML = `<button class="b" data-act="reset">초기화<small>합성 상태만 비움</small></button>` + STEPS.map(([id, t, s]) => `<button class="b" data-step="${id}">${t}<small>${s}</small></button>`).join('');
+  $('fail-btns').onclick = e => { const b = e.target.closest('.b'); if (!b) return; LAST_FAILURE = null; labFailure(b.dataset.id); paintLab(); };
+  $('step-btns').onclick = e => {
+    const b = e.target.closest('.b'); if (!b) return;
+    LAB.active = null; LAST_FAILURE = null;
+    if (b.dataset.act === 'reset') { labReset(); } else { labApply(b.dataset.step); }
+    paintLab();
+  };
+  $('run-all').onclick = runAll;
+}
+
+function runAll() {
+  const rows = FAIL_ORDER.map(id => {
+    let s = T04.resetState(); const ids = {};
+    s = T04.runFixture(s, PKG.fixtures['T04-NORMAL-D1-A']); ids['T04-NORMAL-D1-A'] = s.daily_readings[0].record_id;
+    s = T04.runFixture(s, PKG.fixtures['T04-NORMAL-D1-B']);
+    const rowsBefore = JSON.stringify(s.daily_readings);
+    const f = T04.runFixture(s, PKG.fixtures[id]), fr = T04.checkExpected(f, PKG.fixtures[id]);
+    const kept = JSON.stringify(f.daily_readings) === rowsBefore && f.current_reading && f.current_reading.normalized_value === 105;
+    const rec = T04.runFixture(f, PKG.fixtures['T04-RECOVER-D2']), rr = T04.checkExpected(rec, PKG.fixtures['T04-RECOVER-D2']);
+    const added = rec.daily_readings.length - f.daily_readings.length;
+    const F = T04.FAILURES[FAIL_CODE[id]];
+    return { id, F, f, fr, kept, rec, rr, added, okAll: fr.ok && kept && f.status.freshness === 'stale' && rr.ok && added === 1 && rec.status.freshness === 'fresh' && rec.status.error_code === 'none' };
+  });
+  const good = rows.filter(r => r.okAll).length;
+  $('all-result').innerHTML = `<table style="margin-top:14px"><tr><th>재생한 실패</th><th>표시된 상태</th><th>마지막 정상값</th><th>오래된 값 표시</th><th>다시 시도(RECOVER-D2) 뒤</th><th></th></tr>
+    ${rows.map(r => `<tr><td>${r.F.glyph} <b>${esc(r.F.label)}</b><small>${esc(r.id)}</small></td>
+      <td>${esc(r.f.status.freshness)} / ${esc(r.f.status.error_code)}<small>${esc(r.F.headline)}</small></td>
+      <td>${r.kept ? '<span class="ok-t">✓ 105 유지 · 행 1건</span>' : '<span class="no-t">✗ 변함</span>'}</td>
+      <td>${r.f.status.freshness === 'stale' ? '<span class="ok-t">✓ 표시</span>' : '<span class="no-t">✗</span>'}</td>
+      <td>${esc(r.rec.status.freshness)} / ${esc(r.rec.status.error_code)}<small>행 ${r.f.daily_readings.length}→${r.rec.daily_readings.length} (+${r.added}) · 저장값 ${num(r.rec.current_reading.normalized_value)}</small></td>
+      <td>${r.okAll ? '<span class="ok-t">✓</span>' : '<span class="no-t">✗</span>'}</td></tr>`).join('')}</table>
+    <p class="rule"><b>${good} / ${rows.length}</b> 실패가 fixture의 기대값과 일치했습니다. 모두 합성 시험값이며 실제 조회 기록에는 영향을 주지 않습니다.</p>`;
+}
+
+/* ================= package check ================= */
+function paintPackage(p) {
+  const okF = p.files.filter(f => f.ok).length, okC = p.canonical.filter(c => c.ok).length;
+  const b = (ok, t) => `<span class="bd ${ok ? '' : 'bad'}">${ok ? '✓' : '✗'} ${t}</span>`;
+  $('pk').innerHTML = `
+    <dl><dt>패키지 ID</dt><dd>${esc(p.package_id)}</dd>
+      <dt>계약 버전</dt><dd>contract ${esc(p.contract_version)} · fixture contract ${esc(p.fixture_contract_version)}</dd>
+      <dt>ZIP 파일</dt><dd><a href="${ZIP}">${ZIP}</a> · ${p.zip_bytes} bytes (내려받은 t04-real-information-board-public-v1.zip과 같은 내용)</dd>
+      <dt>ZIP SHA-256</dt><dd>${esc(p.zip_sha256)}</dd></dl>
+    <div class="badges">${b(okF === p.files.length, `파일 해시 ${okF}/${p.files.length} 일치`)}${b(okC === p.canonical.length, `fixture 정규화 해시 ${okC}/${p.canonical.length} 일치`)}${b(p.entry_count === p.entry_count_expected && !p.extra_entries.length, `ZIP 항목 ${p.entry_count}/${p.entry_count_expected}, 목록에 없는 항목 ${p.extra_entries.length}`)}</div>
+    <details><summary>파일별 SHA-256 대조 (매니페스트 ↔ 이 화면이 계산한 값)</summary>
+      <div class="tblwrap"><table><tr><th>파일</th><th>bytes</th><th>SHA-256 (앞 16자)</th><th></th></tr>
+      ${p.files.map(f => `<tr><td>${esc(f.path)}</td><td>${f.bytes_actual}</td><td>${esc((f.sha256_actual || '').slice(0, 16))}…</td><td class="${f.ok ? 'ok-t' : 'no-t'}">${f.ok ? '✓' : '✗'}</td></tr>`).join('')}</table></div></details>
+    <p class="rule">매니페스트는 자기 자신과 ZIP을 목록에 넣을 수 없습니다(순환). 그래서 위 ZIP SHA-256은 이 화면이 계산한 값을 그대로 보여 주는 것입니다.</p>`;
+}
+
+/* ================= boot ================= */
+(async function main() {
+  $('today').textContent = fDate(new Date()) + ' KST';
+  refreshLive();
+  loadLedger();
+  try {
+    PKG = await T04.loadPackage(ZIP);
+    buildLabButtons(); paintPackage(PKG);
+    labFailure('T04-TIMEOUT'); paintLab();
+  } catch (e) {
+    $('pk').innerHTML = `<div class="err-box"><b>공개 패키지를 읽지 못했습니다.</b> (${esc(e.message)})</div>`;
+    $('lab-board').innerHTML = `<div class="err-box">시험대를 준비하지 못했습니다. (${esc(e.message)})</div>`;
+  }
+})();
 </script>
 </body>
 </html>
