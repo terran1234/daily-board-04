@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘의 원달러 환율</title>
+<style>
+  :root { --bg:#f7f7f5; --fg:#1c1c1a; --muted:#6b6b66; --card:#fff; --line:#e2e2dc; --ok:#1a7f4b; --bad:#b3261e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161615; --fg:#ecece8; --muted:#9a9a93; --card:#212120; --line:#34342f; --ok:#5fd394; --bad:#ff8a80; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,-apple-system,"Malgun Gothic",sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:1.25rem; margin:0 0 4px; }
+  h2 { font-size:1rem; margin:0 0 12px; }
+  .sub { color:var(--muted); margin:0 0 20px; font-size:.9rem; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:16px; }
+  .value { font-size:2.6rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .unit { color:var(--muted); font-size:1rem; margin-left:6px; font-weight:400; }
+  dl { margin:16px 0 0; display:grid; grid-template-columns:auto 1fr; gap:6px 16px; font-size:.92rem; }
+  dt { color:var(--muted); }
+  dd { margin:0; font-variant-numeric:tabular-nums; word-break:break-all; }
+  table { width:100%; border-collapse:collapse; font-size:.88rem; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:500; width:28%; }
+  code { font:.85em ui-monospace,Consolas,monospace; word-break:break-all; }
+  .ok { color:var(--ok); font-weight:600; } .bad { color:var(--bad); font-weight:600; }
+  .note { color:var(--muted); font-size:.85rem; margin-top:12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>오늘의 원달러 환율 <span style="font-weight:400;color:var(--muted)">USD/KRW</span></h1>
+  <p class="sub">달러 1개를 사는 데 필요한 원화입니다. 값이 언제·어디서 온 것인지 함께 표시합니다.</p>
+
+  <section class="card" id="live" aria-live="polite">
+    <h2>지금 조회한 값</h2>
+    <div id="live-body">조회 중…</div>
+  </section>
+
+  <section class="card">
+    <h2>정상 한 건 대조 (원자료 → 저장값 → 화면값)</h2>
+    <div id="verify">불러오는 중…</div>
+    <p class="note">화면값 규칙: 저장값(전체 자릿수)을 소수 둘째 자리까지 반올림해 표시합니다.</p>
+  </section>
+</main>
+
+<script>
+const API = 'https://open.er-api.com/v6/latest/USD';
+const TZ = 'Asia/Seoul';
+
+const fmtValue = v => Number(v).toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtTime = d => new Intl.DateTimeFormat('sv-SE', {
+  timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit',
+  hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+}).format(d).replace(' ', ' ') + ' KST';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function card(value, unit, sourceName, sourceUrl, sourceTime, fetchedAt) {
+  return `
+    <div class="value">${fmtValue(value)}<span class="unit">${esc(unit)}</span></div>
+    <dl>
+      <dt>출처</dt><dd><a href="${esc(sourceUrl)}">${esc(sourceName)}</a></dd>
+      <dt>출처 시각</dt><dd>${fmtTime(sourceTime)} <span class="unit">(출처가 값을 갱신한 시각)</span></dd>
+      <dt>조회 시각</dt><dd>${fmtTime(fetchedAt)} <span class="unit">(이 화면이 값을 받아온 시각)</span></dd>
+      <dt>기준 시간대</dt><dd>한국 표준시 KST (UTC+9)</dd>
+    </dl>`;
+}
+
+async function loadLive() {
+  const box = document.getElementById('live-body');
+  try {
+    const r = await fetch(API, { cache: 'no-store' });
+    const fetchedAt = new Date();
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (j.result !== 'success' || typeof j.rates?.KRW !== 'number') throw new Error('응답 형식 이상');
+    box.innerHTML = card(j.rates.KRW, 'KRW / 1 USD', 'ExchangeRate-API', API,
+      new Date(j.time_last_update_unix * 1000), fetchedAt);
+  } catch (e) {
+    box.innerHTML = `<span class="bad">지금은 값을 가져오지 못했습니다.</span> (${esc(e.message)})<br>
+      <span class="note">실패 처리와 마지막 정상값 표시는 다음 카드에서 다룹니다.</span>`;
+  }
+}
+
+async function loadVerify() {
+  const box = document.getElementById('verify');
+  try {
+    const stored = await (await fetch('data/latest.json', { cache: 'no-store' })).json();
+    const rawText = await (await fetch(`data/raw/${stored.kst_date}.json`, { cache: 'no-store' })).text();
+    const raw = JSON.parse(rawText);
+    const rawVal = raw.rates.KRW;
+    const displayed = fmtValue(stored.value);
+    const expected = fmtValue(rawVal);
+    const rawSrcKst = fmtTime(new Date(raw.time_last_update_unix * 1000));
+    const storedSrcKst = fmtTime(new Date(stored.source_time_utc));
+    const okVal = rawVal === stored.value && displayed === expected;
+    const okTime = rawSrcKst === storedSrcKst;
+    box.innerHTML = `
+      <table>
+        <tr><th></th><th>값</th><th>출처 시각 (KST)</th></tr>
+        <tr><th>원자료<br><code>data/raw/${esc(stored.kst_date)}.json</code></th>
+            <td><code>rates.KRW = ${rawVal}</code></td>
+            <td><code>time_last_update_unix = ${raw.time_last_update_unix}</code><br>→ ${rawSrcKst}</td></tr>
+        <tr><th>저장값<br><code>data/latest.json</code></th>
+            <td><code>value = ${stored.value}</code></td>
+            <td><code>${esc(stored.source_time_kst)}</code></td></tr>
+        <tr><th>화면값</th>
+            <td><strong>${displayed}</strong> ${esc(stored.unit)}</td>
+            <td>${storedSrcKst}</td></tr>
+      </table>
+      <p>조회 시각(저장): ${esc(stored.fetched_at_kst)} · 시간대: ${esc(stored.timezone)}</p>
+      <p class="${okVal && okTime ? 'ok' : 'bad'}">${okVal && okTime ? '✓ 세 값이 일치합니다' : '✗ 값이 일치하지 않습니다'}</p>`;
+  } catch (e) {
+    box.innerHTML = `<span class="bad">저장된 기록을 읽지 못했습니다.</span> (${esc(e.message)})`;
+  }
+}
+
+loadLive();
+loadVerify();
+</script>
+</body>
+</html>
