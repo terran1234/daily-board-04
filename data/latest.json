@@ -1,13 +1,13 @@
 {
-    "pair":  "USD/KRW",
-    "value":  1353.681844,
-    "unit":  "KRW per 1 USD",
-    "source_name":  "ExchangeRate-API (open.er-api.com)",
-    "source_url":  "https://open.er-api.com/v6/latest/USD",
-    "source_time_utc":  "2026-09-30T00:02:31+00:00",
-    "source_time_kst":  "2026-09-30T09:02:31+09:00",
-    "fetched_at_utc":  "2026-09-30T07:06:33+00:00",
-    "fetched_at_kst":  "2026-09-30T16:06:33+09:00",
-    "timezone":  "Asia/Seoul (KST, UTC+9)",
-    "kst_date":  "2026-09-30"
+  "pair": "USD/KRW",
+  "value": 1353.681844,
+  "unit": "KRW per 1 USD",
+  "source_name": "ExchangeRate-API (open.er-api.com)",
+  "source_url": "https://open.er-api.com/v6/latest/USD",
+  "source_time_utc": "2026-09-30T00:02:31Z",
+  "source_time_kst": "2026-09-30T09:02:31+09:00",
+  "fetched_at_utc": "2026-09-30T08:26:04Z",
+  "fetched_at_kst": "2026-09-30T17:26:04+09:00",
+  "timezone": "Asia/Seoul (KST, UTC+9)",
+  "kst_date": "2026-09-30"
 }

@@ -1,0 +1,16 @@
+[
+  {
+    "record_id": "usd-krw-2026-09-30",
+    "signal_id": "usd-krw",
+    "record_date": "2026-09-30",
+    "record_timezone": "Asia/Seoul",
+    "normalized_value": 1353.681844,
+    "unit": "KRW per 1 USD",
+    "source_name": "ExchangeRate-API (open.er-api.com)",
+    "source_url": "https://open.er-api.com/v6/latest/USD",
+    "source_time": "2026-09-30T00:02:31Z",
+    "first_fetched_at": "2026-09-30T08:26:04Z",
+    "last_fetched_at": "2026-09-30T08:26:04Z",
+    "raw_file": "data/raw/2026-09-30.json"
+  }
+]
