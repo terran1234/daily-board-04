@@ -1,0 +1,39 @@
+name: record-daily
+
+# Records one real USD/KRW reading per Asia/Seoul date, using record-day.ps1.
+# No secrets: the public source needs no key, and the commit uses the job's own temporary token.
+# 01:20 UTC = 10:20 KST, after the source's daily update (about 00:02-00:15 UTC).
+on:
+  schedule:
+    - cron: '20 1 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: record-daily
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Record today's reading (KST date key, same day = same row)
+        shell: pwsh
+        run: ./record-day.ps1
+
+      - name: Commit the data change, if any
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then
+            echo "No data change to commit."
+          else
+            git commit -m "Record daily reading (KST $(TZ=Asia/Seoul date +%F))"
+            git push
+          fi

@@ -179,6 +179,21 @@
   .allbox td small { display: block; color: var(--ink-3); font: 400 .72rem/1.3 var(--mono); }
   .tblwrap { overflow-x: auto; }
 
+  /* real daily records + day-over-day */
+  .dline { margin: 10px 0 0; font-size: .95rem; font-weight: 600; color: var(--p-ink); }
+  .dline span { color: var(--p-ink-3); font-weight: 400; }
+  .dline.up { color: var(--red); } .dline.down { color: #7fb4ff; } .dline.wait { color: var(--p-ink-2); font-weight: 500; }
+  .realbox { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .cnt { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-size: .82rem; font-weight: 700; border: 1px solid var(--line); }
+  .cnt.done { color: var(--t-ok); border-color: color-mix(in srgb, var(--t-ok) 45%, transparent); }
+  .cnt.wait { color: var(--t-amber); border-color: color-mix(in srgb, var(--t-amber) 50%, transparent); }
+  .waitbox { margin-top: 14px; padding: 14px 16px; border-radius: 12px; border: 1px dashed var(--t-amber); background: color-mix(in srgb, var(--t-amber) 8%, transparent); font-size: .9rem; }
+  .chg { margin-top: 16px; padding: 16px 18px; border-radius: 14px; background: var(--ink); color: var(--paper); }
+  .chg .big { font: 700 2rem/1.15 var(--num); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .chg .fm { margin-top: 6px; font: 400 .8rem/1.6 var(--mono); opacity: .85; word-break: break-all; }
+  .rchk { margin-top: 10px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); font-size: .86rem; }
+  .rchk ul { margin: 6px 0 0; padding-left: 1.2em; } .rchk li { margin: 2px 0; }
+
   /* daily key */
   .rulebox { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 20px; margin-bottom: 16px; font-size: .9rem; }
   .rulebox ol { margin: 0; padding-left: 1.2em; } .rulebox li { margin: 6px 0; }
@@ -245,6 +260,7 @@
       <span class="oldtag" id="oldtag" hidden>오래된 값</span>
     </div>
     <p class="mean">단위 KRW per 1 USD · 달러 1개당 원화 · 소수 둘째 자리까지 표시</p>
+    <p class="dline" id="dline">어제 대비 계산 중…</p>
     <div class="fail" id="live-fail" hidden></div>
 
     <div class="meter">
@@ -307,9 +323,16 @@
     </div>
   </section>
 
-  <!-- ===== 04 package ===== -->
+  <!-- ===== 04 real daily records ===== -->
   <section class="sec">
-    <div class="sec-h"><span>04</span><h2>공개 자산 확인</h2></div>
+    <div class="sec-h"><span>04</span><h2>실제 일별 기록과 어제 대비</h2></div>
+    <p class="sec-sub">위의 합성 시험과 달리 이 영역은 <b>실제 공개 원천에서 실제 날짜에 조회한 값</b>입니다. 하루 한 줄로 저장하고, 서로 다른 KST 날짜 두 값으로 어제 대비 변화를 계산합니다. 값을 만들어 채우지 않습니다.</p>
+    <div class="realbox" id="real">불러오는 중…</div>
+  </section>
+
+  <!-- ===== 05 package ===== -->
+  <section class="sec">
+    <div class="sec-h"><span>05</span><h2>공개 자산 확인</h2></div>
     <p class="sec-sub">시험대가 쓰는 fixture는 과제가 공개한 패키지 그대로입니다. 이 화면이 패키지 ZIP을 직접 열어 파일마다 SHA-256을 계산하고 공개 매니페스트와 맞춰 봅니다.</p>
     <div class="pk" id="pk">불러오는 중…</div>
   </section>
@@ -320,7 +343,7 @@
   </footer>
 </main>
 
-<script src="engine.js?v=card4"></script>
+<script src="engine.js?v=card5"></script>
 <script>
 const API = 'https://open.er-api.com/v6/latest/USD';
 const ZIP = 't04-public.zip';
@@ -618,6 +641,90 @@ function runDaily2() {
 }
 function buildDaily() { $('d1-run').onclick = runDaily1; $('d2-run').onclick = runDaily2; runDaily1(); runDaily2(); }
 
+/* ================= real daily records + day-over-day ================= */
+const REAL_TARGET = 2;                       // the course task needs exactly two different real KST dates
+const r6 = x => Number(x.toFixed(6));       // stored values have at most 6 decimals; hide floating-point noise
+const fSigned = (n, d) => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n).toFixed(d);
+const addDay = ymd => { const d = new Date(ymd + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); };
+
+async function loadDaily() {
+  let rows, from;
+  try {
+    const r = await fetch('data/daily.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    rows = await r.json(); from = 'data/daily.json';
+  } catch (_) {          // before the first scheduled run: the single real record we already have
+    const { stored } = await loadStored();
+    rows = [{ record_id: 'usd-krw-' + stored.kst_date, signal_id: 'usd-krw', record_date: stored.kst_date, record_timezone: 'Asia/Seoul', normalized_value: stored.value, unit: stored.unit,
+      source_name: 'ExchangeRate-API', source_url: stored.source_url, source_time: stored.source_time_utc, first_fetched_at: stored.fetched_at_utc, last_fetched_at: stored.fetched_at_utc, raw_file: 'data/raw/' + stored.kst_date + '.json' }];
+    from = 'data/latest.json (data/daily.json은 첫 자동 기록 뒤에 생김)';
+  }
+  rows = rows.slice().sort((a, b) => a.record_date.localeCompare(b.record_date));
+  const raws = {};
+  for (const r of rows) { try { raws[r.record_date] = JSON.parse(await (await fetch(r.raw_file, { cache: 'no-store' })).text()); } catch (_) { raws[r.record_date] = null; } }
+  return { rows, raws, from };
+}
+
+function deltaLine(rows) {
+  const el = $('dline');
+  if (rows.length < 2) { el.className = 'dline wait'; el.innerHTML = '어제 대비 — 첫 실제 기록(' + esc(rows[0] ? rows[0].record_date : '—') + ')이라 아직 비교할 어제가 없어요'; return; }
+  const prev = rows[rows.length - 2], cur = rows[rows.length - 1], c = T04.changeBetween(prev, cur);
+  const arrow = c.direction === 'increase' ? '▲' : c.direction === 'decrease' ? '▼' : '＝';
+  el.className = 'dline ' + (c.direction === 'increase' ? 'up' : c.direction === 'decrease' ? 'down' : '');
+  el.innerHTML = `어제 대비 ${arrow} ${c.magnitude.toFixed(2)}원 (${fSigned(c.pct, 2)}%) <span>· ${esc(prev.record_date.slice(5))} → ${esc(cur.record_date.slice(5))} · 저장된 일별 값 기준</span>`;
+}
+
+function paintReal({ rows, raws, from }) {
+  const n = rows.length, dates = new Set(rows.map(r => r.record_date));
+  const distinct = dates.size === n, done = n === REAL_TARGET && distinct;
+  const tr = rows.map(r => {
+    const raw = raws[r.record_date], src = new Date(r.source_time), last = new Date(r.last_fetched_at);
+    const okVal = raw && raw.rates && raw.rates.KRW === r.normalized_value;
+    const okSrc = raw && raw.time_last_update_unix * 1000 === src.getTime();
+    const okKey = fDate(last) === r.record_date;
+    const okUnit = r.unit === 'KRW per 1 USD';
+    return `<tr><td><b>${esc(r.record_date)}</b><small>KST 날짜 키</small></td>
+      <td class="mono"><b>${esc(r.normalized_value)}</b><small>${esc(r.unit)}</small></td>
+      <td class="mono">${esc(src.toISOString().slice(0, 19).replace('T', ' '))} UTC<small>${fFull(src)}</small></td>
+      <td class="mono">${fFull(last)}<small>첫 조회 ${fFull(new Date(r.first_fetched_at))}</small></td>
+      <td class="mono" style="word-break:break-all">${esc(r.source_url)}<small>${esc(r.raw_file)} · 원자료 ${raw && raw.rates ? esc(raw.rates.KRW) : '읽지 못함'}</small></td>
+      <td>${okVal ? '<span class="ok-t">✓</span>' : '<span class="no-t">✗</span>'} 원자료=저장값<br>${okSrc ? '<span class="ok-t">✓</span>' : '<span class="no-t">✗</span>'} 관측 시각<br>${okKey ? '<span class="ok-t">✓</span>' : '<span class="no-t">✗</span>'} 날짜 키<br>${okUnit ? '<span class="ok-t">✓</span>' : '<span class="no-t">✗</span>'} 단위</td></tr>`;
+  }).join('');
+  let status;
+  if (done) status = `<span class="cnt done">✓ 실제 기록 ${n}/${REAL_TARGET}건 · 서로 다른 KST 날짜</span>`;
+  else if (n < REAL_TARGET) status = `<span class="cnt wait">실제 기록 ${n}/${REAL_TARGET}건 · 둘째 날 대기 중</span>`;
+  else status = `<span class="cnt wait">실제 기록 ${n}건 (정확히 ${REAL_TARGET}건이어야 함)</span>`;
+
+  let change;
+  if (n < 2) {
+    const next = rows[0] ? addDay(rows[0].record_date) : '다음 KST 날짜';
+    change = `<div class="waitbox"><b>어제 대비: 아직 계산할 수 없습니다.</b> 실제 기록이 첫날(${esc(rows[0] ? rows[0].record_date : '—')}) 1건뿐이라 비교할 어제 값이 없습니다.
+      값을 만들어 채우지 않습니다. 다음 KST 날짜(<b>${esc(next)}</b>)에 출처가 값을 갱신한 뒤(약 09:15 KST) 자동으로 실제 조회를 기록하고, 그 값이 들어오면 여기서 두 저장값과 두 원자료로 각각 계산해 맞춰 봅니다.</div>`;
+  } else {
+    const prev = rows[n - 2], cur = rows[n - 1], c = T04.changeBetween(prev, cur);
+    const pr = raws[prev.record_date], cr = raws[cur.record_date];
+    const rawSigned = pr && cr ? cr.rates.KRW - pr.rates.KRW : null;
+    const okRaw = rawSigned !== null && Math.abs(rawSigned - c.signed) < 1e-9;
+    const shown = fSigned(c.signed, 2), shownPct = fSigned(c.pct, 2);
+    const okShown = $('dline').innerText.includes(c.magnitude.toFixed(2)) && $('dline').innerText.includes(shownPct);
+    change = `<div class="chg"><div class="big">어제 대비 ${shown}원 (${shownPct}%)</div>
+      <div class="fm">저장값: ${esc(cur.normalized_value)} − ${esc(prev.normalized_value)} = ${esc(r6(c.signed))}<br>기간: ${esc(prev.record_date)} → ${esc(cur.record_date)} (조회 날짜순, KST)<br>규칙: 변화 = 오늘 − 어제, 비율 = 변화 ÷ 어제 × 100</div></div>
+      <div class="rchk"><b>원자료에서 다시 계산</b>
+        <ul><li>원자료: ${pr ? esc(pr.rates.KRW) : '?'} (${esc(prev.record_date)}) → ${cr ? esc(cr.rates.KRW) : '?'} (${esc(cur.record_date)}), 차이 ${rawSigned === null ? '?' : esc(r6(rawSigned))}</li>
+        <li>${okRaw ? '<span class="ok-t">✓</span>' : '<span class="no-t">✗</span>'} 원자료로 다시 계산한 변화값 = 저장값으로 계산한 변화값 (조건 C24)</li>
+        <li>${okShown ? '<span class="ok-t">✓</span>' : '<span class="no-t">✗</span>'} 위쪽 보드의 "어제 대비" 표시값과 같음</li></ul></div>`;
+  }
+  $('real').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">${status}<span class="f-note" style="opacity:.7">기록 출처 파일: ${esc(from)}</span></div>
+    <div class="tblwrap"><table class="dtbl"><tr><th>날짜 (KST)</th><th>정규화 값 · 단위</th><th>원천 관측 시각</th><th>조회 시각 (KST)</th><th>공개 원천 URL · 원자료</th><th>대조</th></tr>${tr}</table></div>
+    ${change}
+    <p class="rule">이 화면의 값은 저장된 값을 반올림 없이 그대로 보여 줍니다. 실제 기록은 서로 다른 KST 날짜 ${REAL_TARGET}건까지만 보존하도록 기록 스크립트에 상한을 뒀습니다(과제 기준). 같은 날 다시 조회하면 새 줄이 아니라 같은 줄이 갱신됩니다.</p>`;
+}
+
+async function buildReal() {
+  try { const d = await loadDaily(); deltaLine(d.rows); paintReal(d); }
+  catch (e) { $('real').innerHTML = `<div class="err-box"><b>실제 일별 기록을 읽지 못했습니다.</b> (${esc(e.message)})</div>`; $('dline').textContent = ''; }
+}
+
 /* ================= package check ================= */
 function paintPackage(p) {
   const okF = p.files.filter(f => f.ok).length, okC = p.canonical.filter(c => c.ok).length;
@@ -639,6 +746,7 @@ function paintPackage(p) {
   $('today').textContent = fDate(new Date()) + ' KST';
   refreshLive();
   loadLedger();
+  buildReal();
   try {
     PKG = await T04.loadPackage(ZIP);
     buildLabButtons(); buildDaily(); paintPackage(PKG);

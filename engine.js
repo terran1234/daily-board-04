@@ -312,8 +312,22 @@
     return { state: st, trace };
   }
 
+  /* ---------- 5. day-over-day change from two stored values ---------- */
+
+  /* prev, cur: {normalized_value, unit}. Same rule everywhere: change = cur - prev, percent = change / prev * 100. */
+  function changeBetween(prev, cur) {
+    if (!prev || !cur) return { state: 'insufficient' };
+    if (prev.unit !== cur.unit) return { state: 'unit_mismatch' };
+    const signed = cur.normalized_value - prev.normalized_value;
+    return {
+      state: 'comparable', signed, magnitude: Math.abs(signed),
+      pct: prev.normalized_value === 0 ? null : signed / prev.normalized_value * 100,
+      direction: signed > 0 ? 'increase' : signed < 0 ? 'decrease' : 'unchanged', unit: cur.unit
+    };
+  }
+
   root.T04 = {
-    utcDate, kstClock, runDailySeries,
+    changeBetween, utcDate, kstClock, runDailySeries,
     ERROR_CODES, FAILURES, kstDate, resetState, validateNormalizedReading, applySuccessfulReading, applyError,
     runFixture, checkExpected, classifyFetchFailure, comparisonFor, loadPackage, sha256hex, canonicalJson
   };
