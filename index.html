@@ -4,188 +4,233 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>오늘의 원/달러 환율</title>
-<meta name="description" content="USD/KRW 환율과 그 값이 언제·어디서 왔는지를 함께 보여주는 정보판">
+<meta name="description" content="USD/KRW 환율과 그 값의 나이·출처·기준 시간대를 함께 보여주는 정보판">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
   :root {
-    --bg: #f3f4f1;
-    --surface: #ffffff;
-    --surface-2: #f8f8f5;
-    --ink: #14181f;
-    --ink-2: #4a5160;
-    --ink-3: #7b8290;
-    --line: #e4e5df;
-    --accent: #1f4fd8;
-    --accent-soft: #e8eefc;
-    --ok: #12805c;
-    --ok-soft: #e2f4ec;
-    --bad: #b42318;
-    --bad-soft: #fdeceb;
-    --shadow: 0 1px 2px rgba(20,24,31,.04), 0 8px 24px rgba(20,24,31,.05);
-    --font: "Pretendard", system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
-    --mono: ui-monospace, "SF Mono", Consolas, "D2Coding", monospace;
+    --paper: #ebe8df;
+    --card: #f6f4ed;
+    --ink: #15130f;
+    --ink-2: #514e46;
+    --ink-3: #85817a;
+    --line: #d6d2c5;
+
+    --panel: #101512;
+    --panel-2: #171e19;
+    --panel-line: #263028;
+    --p-ink: #f3f0e6;
+    --p-ink-2: #a9b1a6;
+    --p-ink-3: #6e786f;
+
+    --fresh: #b8f36a;
+    --stale: #ffb84d;
+    --fail: #ff7a6b;
+    --state: var(--fresh);
+
+    --sans: "Pretendard", system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    --num: "Space Grotesk", "Pretendard", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, "D2Coding", monospace;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0e1116; --surface: #161b23; --surface-2: #1b212b;
-      --ink: #eef0f4; --ink-2: #b4bac6; --ink-3: #828a98; --line: #262d39;
-      --accent: #7ea2ff; --accent-soft: #1c2745;
-      --ok: #4fd1a1; --ok-soft: #12302a; --bad: #ff8f86; --bad-soft: #3a1b1a;
-      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+      --paper: #0a0b0a; --card: #121512; --ink: #ecebe4; --ink-2: #b1b0a6; --ink-3: #777a72; --line: #232823;
+      --panel: #131914; --panel-2: #1a221b; --panel-line: #2a352c;
     }
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font: 400 16px/1.55 var(--font); letter-spacing: -0.01em;
-    -webkit-font-smoothing: antialiased;
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--sans); letter-spacing: -0.01em; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 28px 20px 80px; }
+
+  /* masthead */
+  .mast { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding-bottom: 14px; border-bottom: 2px solid var(--ink); margin-bottom: 28px; }
+  .brand { font: 600 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+  .date { font: 400 12px/1 var(--mono); color: var(--ink-3); letter-spacing: .04em; }
+  h1 { margin: 0 0 6px; font-size: clamp(1.5rem, 4.2vw, 2.1rem); line-height: 1.2; letter-spacing: -0.035em; font-weight: 700; }
+  .lede { margin: 0 0 24px; color: var(--ink-2); max-width: 58ch; }
+
+  /* instrument */
+  .instrument {
+    position: relative; overflow: hidden; color: var(--p-ink);
+    background: var(--panel); border-radius: 22px; padding: 28px 30px 26px;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.055) 1px, transparent 0);
+    background-size: 22px 22px;
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,.55);
   }
-  a { color: var(--accent); text-underline-offset: 3px; }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 72px; }
+  .instrument[data-state="stale"] { --state: var(--stale); }
+  .instrument[data-state="fallback"] { --state: var(--fail); }
 
-  /* header */
-  .eyebrow { font: 600 12px/1 var(--font); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 14px; }
-  h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.2; font-weight: 700; letter-spacing: -0.03em; }
-  h1 span { color: var(--ink-3); font-weight: 500; margin-left: 8px; font-size: .6em; letter-spacing: 0; }
-  .lede { margin: 10px 0 28px; color: var(--ink-2); max-width: 56ch; }
+  .i-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .i-label, .m-title, .prov h3, .cell .k { letter-spacing: .03em !important; }
+  .i-label { font: 500 12px/1 var(--mono); letter-spacing: .1em; color: var(--p-ink-3); text-transform: uppercase; }
+  .chip { display: inline-flex; align-items: center; gap: 9px; padding: 7px 14px 7px 12px; border-radius: 999px; font-size: .8rem; font-weight: 600; color: var(--state); border: 1px solid color-mix(in srgb, var(--state) 40%, transparent); background: color-mix(in srgb, var(--state) 10%, transparent); }
+  .chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--state); }
+  [data-state="fresh"] .chip i { animation: blink 2.4s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { [data-state="fresh"] .chip i { animation: none; } }
 
-  /* hero */
-  .hero {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 20px;
-    box-shadow: var(--shadow); padding: 28px 28px 24px; position: relative; overflow: hidden;
-  }
-  .hero::before {
-    content: ""; position: absolute; inset: 0 0 auto 0; height: 4px;
-    background: linear-gradient(90deg, var(--accent), #6f8df0 60%, transparent);
-  }
-  .hero-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .label { font-size: .85rem; color: var(--ink-3); font-weight: 500; }
-  .pill {
-    display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 10px; border-radius: 999px;
-    font-size: .78rem; font-weight: 600; background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line);
-  }
-  .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
-  .pill.live { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
-  .pill.live i { background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: pulse 2s infinite; }
-  .pill.err { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
-  .pill.err i { background: var(--bad); }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(18,128,92,.45); } 70% { box-shadow: 0 0 0 8px rgba(18,128,92,0); } 100% { box-shadow: 0 0 0 0 rgba(18,128,92,0); } }
-  @media (prefers-reduced-motion: reduce) { .pill.live i { animation: none; } }
+  .reading { margin: 26px 0 6px; display: flex; align-items: flex-end; flex-wrap: wrap; gap: 4px 18px; }
+  .num { font: 700 clamp(3.4rem, 13vw, 6.6rem)/0.95 var(--num); letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+  .u { padding-bottom: .7em; font-size: 1rem; color: var(--p-ink-2); }
+  .u b { color: var(--p-ink); font-weight: 600; }
+  .mean { margin: 0; font-size: .85rem; color: var(--p-ink-3); }
+  .banner { margin: 18px 0 0; padding: 12px 14px; border-radius: 10px; font-size: .9rem; color: var(--state); background: color-mix(in srgb, var(--state) 9%, transparent); border: 1px solid color-mix(in srgb, var(--state) 30%, transparent); }
+  .banner[hidden] { display: none; }
 
-  .value-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; margin: 14px 0 4px; }
-  .value { font-size: clamp(3rem, 11vw, 5rem); line-height: 1; font-weight: 700; letter-spacing: -0.045em; font-variant-numeric: tabular-nums; }
-  .unit { font-size: 1.05rem; color: var(--ink-2); font-weight: 500; }
-  .unit b { color: var(--ink); font-weight: 600; }
-  .meaning { color: var(--ink-3); font-size: .9rem; margin: 0; }
+  /* freshness meter */
+  .meter { margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--panel-line); }
+  .m-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 30px; }
+  .m-title { font: 500 12px/1 var(--mono); letter-spacing: .1em; color: var(--p-ink-3); text-transform: uppercase; }
+  .m-age { font-size: .95rem; color: var(--p-ink); font-weight: 600; }
+  .m-age span { color: var(--p-ink-3); font-weight: 400; }
+  .axis { position: relative; height: 10px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--panel-line); }
+  .fill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; background: linear-gradient(90deg, color-mix(in srgb, var(--state) 35%, transparent), var(--state)); }
+  .tick { position: absolute; top: 12px; width: 1px; height: 8px; background: var(--panel-line); }
+  .tick em { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font: 400 10.5px/1 var(--mono); color: var(--p-ink-3); font-style: normal; white-space: nowrap; }
+  .pin { position: absolute; top: -9px; width: 2px; height: 28px; background: var(--state); transform: translateX(-1px); }
+  .pin::before { content: ""; position: absolute; top: 9px; left: 50%; width: 14px; height: 14px; transform: translateX(-50%); border-radius: 50%; background: var(--panel); border: 3px solid var(--state); }
+  .pin label { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 600 11px/1 var(--mono); color: var(--state); }
+  .pin.l label { left: 0; transform: none; }
+  .pin.r label { left: auto; right: 0; transform: none; }
+  .ends { display: flex; justify-content: space-between; gap: 12px; margin-top: 34px; font: 400 11px/1.4 var(--mono); color: var(--p-ink-2); }
+  .ends b { display: block; color: var(--p-ink); font-weight: 500; font-size: 12.5px; }
+  .ends div:last-child { text-align: right; }
 
-  /* timeline */
-  .timeline { margin-top: 26px; padding-top: 22px; border-top: 1px dashed var(--line); }
-  .tl-track { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; }
-  .tl-pt { display: flex; flex-direction: column; gap: 2px; }
-  .tl-pt.right { text-align: right; align-items: flex-end; }
-  .tl-name { font-size: .75rem; color: var(--ink-3); font-weight: 600; letter-spacing: .02em; }
-  .tl-time { font: 600 1.05rem/1.2 var(--font); font-variant-numeric: tabular-nums; }
-  .tl-date { font-size: .8rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-  .tl-line { position: relative; height: 2px; background: var(--line); margin: 0 4px; }
-  .tl-line::before, .tl-line::after { content: ""; position: absolute; top: 50%; width: 11px; height: 11px; border-radius: 50%; transform: translateY(-50%); }
-  .tl-line::before { left: -6px; background: var(--surface); border: 2px solid var(--ink-3); }
-  .tl-line::after { right: -6px; background: var(--accent); border: 2px solid var(--accent); }
-  .tl-gap { position: absolute; left: 50%; top: -12px; transform: translateX(-50%); background: var(--surface); padding: 0 10px; font-size: .78rem; color: var(--ink-2); white-space: nowrap; font-weight: 500; }
-  .tl-tz { margin: 16px 0 0; font-size: .8rem; color: var(--ink-3); }
+  /* provenance */
+  .prov { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 26px; border-top: 1px solid var(--panel-line); }
+  .prov > div { padding: 16px 16px 0 0; }
+  .prov > div + div { padding-left: 16px; border-left: 1px solid var(--panel-line); }
+  .prov h3 { margin: 0 0 8px; font: 500 11px/1 var(--mono); letter-spacing: .1em; color: var(--p-ink-3); text-transform: uppercase; }
+  .prov p { margin: 0; font: 500 .86rem/1.35 var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .prov p a { white-space: normal; font-size: .95rem; }
+  .prov small { display: block; margin-top: 4px; font: 400 .75rem/1.4 var(--sans); color: var(--p-ink-3); }
+  .prov a { color: var(--p-ink); }
 
-  /* meta grid */
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 14px; }
-  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
-  .tile h3 { margin: 0 0 6px; font-size: .74rem; font-weight: 600; letter-spacing: .06em; color: var(--ink-3); text-transform: uppercase; }
-  .tile p { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .tile small { display: block; margin-top: 4px; color: var(--ink-3); font-weight: 400; font-size: .8rem; line-height: 1.4; }
+  /* section heads */
+  .sec { margin-top: 56px; }
+  .sec-h { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+  .sec-h span { font: 600 12px/1 var(--mono); color: var(--ink-3); letter-spacing: .08em; }
+  h2 { margin: 0; font-size: 1.25rem; letter-spacing: -0.03em; }
+  .sec-sub { margin: 0 0 20px; color: var(--ink-2); font-size: .92rem; max-width: 60ch; }
 
-  /* verify */
-  h2 { font-size: 1.15rem; margin: 44px 0 4px; letter-spacing: -0.02em; }
-  .h2-sub { margin: 0 0 16px; color: var(--ink-3); font-size: .9rem; }
-  .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 10px; align-items: stretch; }
-  .step { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
-  .step .n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: .75rem; font-weight: 700; margin-bottom: 10px; }
-  .step h3 { margin: 0; font-size: .95rem; }
-  .step .file { display: block; margin: 2px 0 12px; font: 500 .74rem/1.4 var(--mono); color: var(--ink-3); word-break: break-all; }
-  .step .big { font: 700 1.3rem/1.2 var(--font); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; word-break: break-all; }
-  .step .sub { margin-top: 8px; font-size: .78rem; color: var(--ink-3); line-height: 1.45; word-break: break-all; }
-  .step .sub code { font: 500 .95em var(--mono); color: var(--ink-2); }
-  .arrow { align-self: center; color: var(--ink-3); font-size: 1.2rem; }
-  .verdict { margin-top: 14px; display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 12px; font-weight: 600; font-size: .92rem; }
-  .verdict.ok { background: var(--ok-soft); color: var(--ok); }
-  .verdict.bad { background: var(--bad-soft); color: var(--bad); }
+  /* ledger */
+  .ledger { display: grid; grid-template-columns: 1fr 52px 1fr 52px 1fr; align-items: stretch; }
+  .cell { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+  .cell .k { font: 600 11px/1 var(--mono); letter-spacing: .1em; color: var(--ink-3); text-transform: uppercase; }
+  .cell h3 { margin: 8px 0 2px; font-size: 1rem; }
+  .cell .f { font: 400 11.5px/1.4 var(--mono); color: var(--ink-3); word-break: break-all; }
+  .cell .v { margin: 14px 0 10px; font: 700 1.6rem/1.1 var(--num); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; word-break: break-all; }
+  .cell .d { font: 400 11.5px/1.65 var(--mono); color: var(--ink-2); word-break: break-all; }
+  .link { position: relative; display: grid; place-items: center; }
+  .link::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 2px dotted var(--ink-3); opacity: .5; }
+  .link b { position: relative; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--paper); font: 600 13px/1 var(--mono); }
+  .verdict { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; padding: 14px 18px; border-radius: 12px; background: var(--ink); color: var(--paper); font-weight: 600; }
+  .verdict .ok { color: #7bd23a; }
+  @media (prefers-color-scheme: dark) { .verdict .ok { color: #5f9e2c; } }
+  .verdict.bad { background: #8a1f14; color: #fff; }
+  .verdict .diff { font: 500 .8rem/1 var(--mono); opacity: .8; }
   .rule { margin: 12px 2px 0; font-size: .82rem; color: var(--ink-3); }
 
-  /* states */
-  .skeleton { display: inline-block; width: 8ch; height: .9em; border-radius: 8px; background: linear-gradient(90deg, var(--line), var(--surface-2), var(--line)); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
-  @keyframes shimmer { to { background-position: -200% 0; } }
-  .err-box { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: var(--bad-soft); color: var(--bad); font-size: .92rem; }
+  /* legend */
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .lg { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px 18px; }
+  .lg .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+  .lg h3 { margin: 0 0 6px; font-size: .95rem; display: flex; align-items: center; }
+  .lg p { margin: 0; font-size: .84rem; color: var(--ink-2); line-height: 1.5; }
+  .lg .tag { position: absolute; top: 14px; right: 14px; font: 600 10px/1 var(--mono); letter-spacing: .06em; padding: 4px 7px; border-radius: 5px; background: var(--line); color: var(--ink-2); }
+  .lg.now { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink) inset; }
+  .lg.now .tag { background: var(--ink); color: var(--paper); }
+  .d-fresh { background: #7bd23a; } .d-stale { background: #f0a020; } .d-fail { background: #ee5a48; } .d-out { background: var(--ink-3); }
 
-  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: .82rem; display: flex; gap: 8px 20px; flex-wrap: wrap; }
+  .err-box { margin-top: 12px; padding: 14px 16px; border-radius: 12px; background: color-mix(in srgb, #ee5a48 12%, var(--card)); border: 1px solid color-mix(in srgb, #ee5a48 40%, transparent); font-size: .92rem; }
 
-  @media (max-width: 720px) {
-    .wrap { padding: 28px 16px 56px; }
-    .hero { padding: 22px 18px 20px; border-radius: 16px; }
-    .flow { grid-template-columns: 1fr; }
-    .arrow { transform: rotate(90deg); justify-self: center; }
-    .tl-track { grid-template-columns: 1fr 1fr; row-gap: 26px; }
-    .tl-line { grid-column: 1 / -1; grid-row: 1; margin: 8px 6px 0; }
-    .tl-pt { grid-row: 2; }
+  footer { margin-top: 64px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--ink-3); font: 400 12px/1.6 var(--mono); display: flex; flex-wrap: wrap; gap: 6px 22px; }
+
+  .sk { display: inline-block; width: 6ch; height: .8em; border-radius: 8px; background: linear-gradient(90deg, var(--panel-2), var(--panel-line), var(--panel-2)); background-size: 200% 100%; animation: sh 1.4s infinite; }
+  @keyframes sh { to { background-position: -200% 0; } }
+
+  @media (max-width: 760px) {
+    .wrap { padding: 20px 14px 64px; }
+    .instrument { padding: 22px 18px 20px; border-radius: 18px; }
+    .prov { grid-template-columns: 1fr 1fr; }
+    .prov p { white-space: normal; overflow-wrap: anywhere; }
+    .prov > div { padding: 14px 12px 0 0; }
+    .prov > div:nth-child(3) { padding-left: 0; border-left: 0; }
+    .prov > div:nth-child(n+3) { border-top: 1px solid var(--panel-line); margin-top: 14px; }
+    .ledger { grid-template-columns: 1fr; }
+    .link { height: 40px; }
+    .link::before { left: 50%; right: auto; top: 0; bottom: 0; border-top: 0; border-left: 2px dotted var(--ink-3); }
   }
 </style>
 </head>
 <body>
 <main class="wrap">
-  <p class="eyebrow">Daily Board · 04</p>
-  <h1>오늘의 원/달러 환율<span>USD/KRW</span></h1>
-  <p class="lede">달러 1개를 사는 데 필요한 원화입니다. 숫자만이 아니라, 이 값이 언제 어디서 왔는지를 함께 보여줍니다.</p>
-
-  <section class="hero" aria-labelledby="live-title">
-    <div class="hero-top">
-      <span class="label" id="live-title">지금 조회한 값</span>
-      <span class="pill" id="status"><i></i><span id="status-text">조회 중</span></span>
-    </div>
-    <div class="value-row">
-      <span class="value" id="v-value"><span class="skeleton"></span></span>
-      <span class="unit"><b>원</b> / 1 USD</span>
-    </div>
-    <p class="meaning">단위: KRW per 1 USD · 달러 1개당 원화 (소수 둘째 자리까지 표시)</p>
-
-    <div class="timeline" aria-label="출처 시각과 조회 시각">
-      <div class="tl-track">
-        <div class="tl-pt">
-          <span class="tl-name">출처 시각</span>
-          <span class="tl-time" id="t-src">—</span>
-          <span class="tl-date" id="d-src"></span>
-        </div>
-        <div class="tl-line"><span class="tl-gap" id="tl-gap"></span></div>
-        <div class="tl-pt right">
-          <span class="tl-name">조회 시각</span>
-          <span class="tl-time" id="t-fetch">—</span>
-          <span class="tl-date" id="d-fetch"></span>
-        </div>
-      </div>
-      <p class="tl-tz">모든 시각은 한국 표준시(KST, UTC+9) 기준입니다. 출처 시각은 출처가 값을 갱신한 때, 조회 시각은 이 화면이 값을 받아온 때입니다.</p>
-    </div>
-    <div id="live-err"></div>
-  </section>
-
-  <div class="grid">
-    <div class="tile"><h3>출처</h3><p><a id="src-link" href="https://open.er-api.com/v6/latest/USD">ExchangeRate-API</a></p><small>키·로그인 없이 쓰는 공개 환율 API</small></div>
-    <div class="tile"><h3>기준 시간대</h3><p>KST (UTC+9)</p><small>Asia/Seoul · 일별 기록의 날짜 기준</small></div>
-    <div class="tile"><h3>다음 갱신 예정</h3><p id="cycle">—</p><small>KST · 출처 응답이 알려준 시각</small></div>
+  <div class="mast">
+    <span class="brand">Daily Board / 04</span>
+    <span class="date" id="today">—</span>
   </div>
 
-  <h2>정상 한 건 대조</h2>
-  <p class="h2-sub">받은 그대로의 원자료 → 저장한 값 → 화면에 보이는 값이 서로 같은지 확인합니다.</p>
-  <div id="verify"><div class="step"><span class="skeleton"></span></div></div>
-  <p class="rule">화면값 규칙: 저장값(전체 자릿수)을 소수 둘째 자리까지 반올림해 표시합니다.</p>
+  <h1>오늘의 원/달러 환율</h1>
+  <p class="lede">달러 1개를 사는 데 필요한 원화입니다. 숫자보다 먼저, 이 값이 얼마나 오래됐고 어디서 왔는지를 보여줍니다.</p>
+
+  <section class="instrument" id="inst" data-state="loading" aria-labelledby="i-label">
+    <div class="i-top">
+      <span class="i-label" id="i-label">USD/KRW · 지금 조회한 값</span>
+      <span class="chip"><i></i><span id="chip-text">조회 중</span></span>
+    </div>
+
+    <div class="reading">
+      <span class="num" id="num"><span class="sk"></span></span>
+      <span class="u"><b>원</b> / 1 USD</span>
+    </div>
+    <p class="mean">단위 KRW per 1 USD · 달러 1개당 원화 · 소수 둘째 자리까지 표시</p>
+    <p class="banner" id="banner" hidden></p>
+
+    <div class="meter">
+      <div class="m-head">
+        <span class="m-title">값의 나이 · 출처 갱신 주기 안에서</span>
+        <span class="m-age" id="age">—</span>
+      </div>
+      <div class="axis" id="axis" role="img" aria-label="출처 갱신 시각부터 다음 갱신 예정 시각까지의 진행 상황"></div>
+      <div class="ends">
+        <div><b id="e-src">—</b>출처 갱신</div>
+        <div><b id="e-next">—</b>다음 갱신 예정</div>
+      </div>
+    </div>
+
+    <div class="prov">
+      <div><h3>출처</h3><p><a id="p-src" href="https://open.er-api.com/v6/latest/USD">ExchangeRate-API</a></p><small>키·로그인 없는 공개 API</small></div>
+      <div><h3>출처 시각</h3><p id="p-srct">—</p><small>출처가 값을 갱신한 때</small></div>
+      <div><h3 id="p-fetch-h">조회 시각</h3><p id="p-fetch">—</p><small id="p-fetch-s">이 화면이 값을 받아온 때</small></div>
+      <div><h3>기준 시간대</h3><p>KST · UTC+9</p><small>Asia/Seoul, 모든 시각 동일</small></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-h"><span>01</span><h2>정상 한 건 대조</h2></div>
+    <p class="sec-sub">받은 그대로의 원자료, 저장한 값, 화면에 보이는 값이 같은지 확인합니다.</p>
+    <div id="ledger"><div class="cell"><span class="sk" style="background:var(--line)"></span></div></div>
+    <p class="rule">화면값 규칙: 저장값(전체 자릿수)을 소수 둘째 자리까지 반올림해 표시합니다.</p>
+  </section>
+
+  <section class="sec">
+    <div class="sec-h"><span>02</span><h2>상태 읽는 법</h2></div>
+    <p class="sec-sub">이 정보판은 값이 잘 올 때보다 안 올 때를 정직하게 말하는 데 신경 씁니다.</p>
+    <div class="legend" id="legend">
+      <div class="lg" data-k="fresh"><span class="tag">지금</span><h3><span class="dot d-fresh"></span>정상</h3><p>출처가 예정대로 갱신했고 조회에 성공했습니다.</p></div>
+      <div class="lg" data-k="stale"><span class="tag">지금</span><h3><span class="dot d-stale"></span>오래된 값</h3><p>다음 갱신 예정 시각이 지났는데 값이 그대로입니다. 숫자는 보이되 늦었다고 알립니다.</p></div>
+      <div class="lg" data-k="fallback"><span class="tag">지금</span><h3><span class="dot d-fail"></span>조회 실패</h3><p>값을 못 받으면 마지막 정상값과 그 조회 시각을 그대로 보여줍니다.</p></div>
+      <div class="lg" data-k="out"><span class="tag">예정</span><h3><span class="dot d-out"></span>이상치</h3><p>평소 범위를 크게 벗어나면 확정하지 않고 경고합니다. 다음 단계에서 재생합니다.</p></div>
+    </div>
+  </section>
 
   <footer>
     <span>개인정보·로그인·비밀키 없음</span>
-    <span>데이터: ExchangeRate-API</span>
+    <span>데이터 ExchangeRate-API</span>
     <a href="https://github.com/terran1234/daily-board-04">소스 보기</a>
   </footer>
 </main>
@@ -197,80 +242,129 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 const fmtValue = v => Number(v).toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const parts = d => Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
-  timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit',
-  hour:'2-digit', minute:'2-digit', second:'2-digit', hourCycle:'h23'
+const P = d => Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+  timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hourCycle:'h23'
 }).formatToParts(d).map(p => [p.type, p.value]));
-const fmtDate = d => { const p = parts(d); return `${p.year}-${p.month}-${p.day}`; };
-const fmtClock = d => { const p = parts(d); return `${p.hour}:${p.minute}:${p.second}`; };
-const fmtFull = d => `${fmtDate(d)} ${fmtClock(d)} KST`;
-function gapText(a, b) {
-  const m = Math.max(0, Math.round((b - a) / 60000));
-  const h = Math.floor(m / 60), r = m % 60;
-  if (m < 1) return '방금 갱신됨';
-  return (h ? `${h}시간 ` : '') + (r ? `${r}분 ` : '') + '차이';
+const fDate = d => { const p = P(d); return `${p.year}-${p.month}-${p.day}`; };
+const fClock = d => { const p = P(d); return `${p.hour}:${p.minute}:${p.second}`; };
+const fHM = d => { const p = P(d); return `${p.hour}:${p.minute}`; };
+const fShort = d => { const p = P(d); return `${p.month}/${p.day} ${p.hour}:${p.minute}`; };
+const fFull = d => `${fDate(d)} ${fClock(d)} KST`;
+function span(ms) {
+  const m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60), r = m % 60;
+  if (m < 1) return '1분 미만';
+  return (h ? `${h}시간 ` : '') + (r ? `${r}분` : '').trim();
 }
 
-function setStatus(kind, text) {
-  $('status').className = 'pill ' + kind;
-  $('status-text').textContent = text;
-}
+/* ---- 화면 그리기: 모델 하나를 받아 계기판을 채운다 ---- */
+function render(m) {
+  const inst = $('inst');
+  const state = m.mode === 'stored' ? 'fallback' : (m.fetched >= m.next ? 'stale' : 'fresh');
+  inst.dataset.state = state;
+  $('chip-text').textContent = { fresh: '정상 · 실시간 조회', stale: '오래된 값 · 갱신 지연', fallback: '조회 실패 · 마지막 정상값' }[state];
+  $('i-label').textContent = state === 'fallback' ? 'USD/KRW · 마지막 정상값' : 'USD/KRW · 지금 조회한 값';
+  $('num').textContent = fmtValue(m.value);
 
-async function loadLive() {
-  try {
-    const r = await fetch(API, { cache: 'no-store' });
-    const fetchedAt = new Date();
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    if (j.result !== 'success' || typeof j.rates?.KRW !== 'number') throw new Error('응답 형식 이상');
-    const src = new Date(j.time_last_update_unix * 1000);
-    $('v-value').textContent = fmtValue(j.rates.KRW);
-    $('t-src').textContent = fmtClock(src);   $('d-src').textContent = fmtDate(src);
-    $('t-fetch').textContent = fmtClock(fetchedAt); $('d-fetch').textContent = fmtDate(fetchedAt);
-    $('tl-gap').textContent = gapText(src, fetchedAt);
-    if (j.time_next_update_unix) $('cycle').textContent = fmtFull(new Date(j.time_next_update_unix * 1000)).replace(' KST', '');
-    setStatus('live', '실시간 조회 성공');
-  } catch (e) {
-    $('v-value').textContent = '—';
-    setStatus('err', '지금은 조회하지 못함');
-    $('live-err').innerHTML = `<div class="err-box"><b>값을 가져오지 못했습니다.</b> (${esc(e.message)})<br>마지막 정상값 표시와 실패 종류별 안내는 다음 단계에서 붙입니다.</div>`;
+  const b = $('banner');
+  if (state === 'fallback') {
+    b.hidden = false;
+    b.textContent = `지금은 값을 가져오지 못했습니다(${m.error}). 아래 숫자는 ${fFull(m.fetched)}에 받은 마지막 정상값입니다.`;
+  } else if (state === 'stale') {
+    b.hidden = false;
+    b.textContent = '출처의 다음 갱신 예정 시각이 지났지만 값이 바뀌지 않았습니다. 이 숫자는 낡았을 수 있습니다.';
+  } else b.hidden = true;
+
+  // 신선도 축: 출처 갱신 → 다음 갱신 예정, 그 안에서 조회 시각의 위치
+  const total = m.next - m.src, raw = (m.fetched - m.src) / total, pos = Math.min(1, Math.max(0, raw));
+  const H6 = 6 * 3600e3, OFF = 9 * 3600e3;
+  let ticks = '';
+  for (let t = Math.ceil((m.src.getTime() + OFF) / H6) * H6 - OFF; t < m.next.getTime(); t += H6) {
+    const x = (t - m.src) / total;
+    if (x < 0.04 || x > 0.96 || Math.abs(x - pos) < 0.05) continue;
+    ticks += `<span class="tick" style="left:${x * 100}%"><em>${fHM(new Date(t))}</em></span>`;
   }
+  const cls = pos < 0.14 ? 'l' : pos > 0.86 ? 'r' : '';
+  $('axis').innerHTML = `<span class="fill" style="width:${pos * 100}%"></span>${ticks}` +
+    `<span class="pin ${cls}" style="left:${pos * 100}%"><label>${state === 'fallback' ? '마지막 조회' : '조회'} ${fHM(m.fetched)}</label></span>`;
+
+  const age = m.fetched - m.src, left = m.next - m.fetched;
+  $('age').innerHTML = `${span(age)} 전에 갱신된 값 <span>· ${left > 0 ? `다음 갱신까지 ${span(left)}` : `예정보다 ${span(-left)} 지연`}</span>`;
+  $('e-src').textContent = fShort(m.src);
+  $('e-next').textContent = fShort(m.next);
+
+  $('p-srct').textContent = fFull(m.src).replace(' KST', '');
+  $('p-fetch').textContent = fFull(m.fetched).replace(' KST', '');
+  $('p-fetch-h').textContent = state === 'fallback' ? '마지막 정상 조회' : '조회 시각';
+  $('p-fetch-s').textContent = state === 'fallback' ? '지금 시도는 실패했습니다' : '이 화면이 값을 받아온 때';
+
+  document.querySelectorAll('.lg').forEach(el => el.classList.toggle('now', el.dataset.k === state));
 }
 
-async function loadVerify() {
-  const box = $('verify');
+async function liveModel() {
+  const r = await fetch(API, { cache: 'no-store' });
+  const fetched = new Date();
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  if (j.result !== 'success' || typeof j.rates?.KRW !== 'number') throw new Error('응답 형식 이상');
+  return { mode: 'live', value: j.rates.KRW, src: new Date(j.time_last_update_unix * 1000),
+           next: new Date(j.time_next_update_unix * 1000), fetched };
+}
+
+async function storedRecord() {
+  const stored = await (await fetch('data/latest.json', { cache: 'no-store' })).json();
+  const raw = JSON.parse(await (await fetch(`data/raw/${stored.kst_date}.json`, { cache: 'no-store' })).text());
+  return { stored, raw };
+}
+
+async function main() {
+  $('today').textContent = fDate(new Date()) + ' KST';
   try {
-    const stored = await (await fetch('data/latest.json', { cache: 'no-store' })).json();
-    const raw = JSON.parse(await (await fetch(`data/raw/${stored.kst_date}.json`, { cache: 'no-store' })).text());
-    const rawVal = raw.rates.KRW;
-    const rawSrc = new Date(raw.time_last_update_unix * 1000);
-    const storedSrc = new Date(stored.source_time_utc);
-    const displayed = fmtValue(stored.value);
-    const okVal = rawVal === stored.value && displayed === fmtValue(rawVal);
-    const okTime = fmtFull(rawSrc) === fmtFull(storedSrc);
+    render(await liveModel());
+  } catch (e) {
+    try {
+      const { stored, raw } = await storedRecord();
+      render({ mode: 'stored', value: stored.value, src: new Date(stored.source_time_utc),
+               next: new Date(raw.time_next_update_unix * 1000), fetched: new Date(stored.fetched_at_utc), error: e.message });
+    } catch (e2) {
+      $('inst').dataset.state = 'fallback';
+      $('chip-text').textContent = '조회 실패 · 저장값도 없음';
+      $('num').textContent = '—';
+      const b = $('banner'); b.hidden = false; b.textContent = `값을 가져오지 못했고 보여줄 마지막 정상값도 없습니다. (${e.message})`;
+    }
+  }
+  loadLedger();
+}
+
+async function loadLedger() {
+  const box = $('ledger');
+  try {
+    const { stored, raw } = await storedRecord();
+    const rawVal = raw.rates.KRW, rawSrc = new Date(raw.time_last_update_unix * 1000), storedSrc = new Date(stored.source_time_utc);
+    const shown = fmtValue(stored.value);
+    const okVal = rawVal === stored.value && shown === fmtValue(rawVal);
+    const okTime = fFull(rawSrc) === fFull(storedSrc);
     const ok = okVal && okTime;
     box.innerHTML = `
-      <div class="flow">
-        <div class="step"><span class="n">1</span><h3>원자료</h3><span class="file">data/raw/${esc(stored.kst_date)}.json</span>
-          <div class="big">${rawVal}</div>
-          <div class="sub"><code>rates.KRW</code><br><code>time_last_update_unix</code> ${raw.time_last_update_unix}<br>→ ${fmtFull(rawSrc)}</div></div>
-        <div class="arrow" aria-hidden="true">→</div>
-        <div class="step"><span class="n">2</span><h3>저장값</h3><span class="file">data/latest.json</span>
-          <div class="big">${stored.value}</div>
-          <div class="sub"><code>source_time_kst</code> ${esc(stored.source_time_kst)}<br>조회 ${esc(stored.fetched_at_kst)}</div></div>
-        <div class="arrow" aria-hidden="true">→</div>
-        <div class="step"><span class="n">3</span><h3>화면값</h3><span class="file">${esc(stored.unit)}</span>
-          <div class="big">${displayed}</div>
-          <div class="sub">출처 시각 ${fmtFull(storedSrc)}<br>시간대 ${esc(stored.timezone)}</div></div>
+      <div class="ledger">
+        <div class="cell"><span class="k">원자료</span><h3>받은 그대로</h3><div class="f">data/raw/${esc(stored.kst_date)}.json</div>
+          <div class="v">${rawVal}</div>
+          <div class="d">rates.KRW<br>time_last_update_unix<br>${raw.time_last_update_unix}<br>→ ${fFull(rawSrc)}</div></div>
+        <div class="link"><b>=</b></div>
+        <div class="cell"><span class="k">저장값</span><h3>기록에 남긴 값</h3><div class="f">data/latest.json</div>
+          <div class="v">${stored.value}</div>
+          <div class="d">source_time_kst<br>${esc(stored.source_time_kst)}<br>조회 ${esc(stored.fetched_at_kst)}</div></div>
+        <div class="link"><b>=</b></div>
+        <div class="cell"><span class="k">화면값</span><h3>사람이 보는 값</h3><div class="f">${esc(stored.unit)}</div>
+          <div class="v">${shown}</div>
+          <div class="d">출처 시각<br>${fFull(storedSrc)}<br>${esc(stored.timezone)}</div></div>
       </div>
-      <div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? '✓ 원자료·저장값·화면값이 일치합니다' : '✗ 값이 일치하지 않습니다'}</div>`;
+      <div class="verdict ${ok ? '' : 'bad'}"><span>${ok ? '<span class="ok">✓</span> 세 값이 일치합니다' : '✗ 값이 일치하지 않습니다'}</span><span class="diff">원자료 − 저장값 = ${(rawVal - stored.value)}</span></div>`;
   } catch (e) {
     box.innerHTML = `<div class="err-box"><b>저장된 기록을 읽지 못했습니다.</b> (${esc(e.message)})</div>`;
   }
 }
 
-loadLive();
-loadVerify();
+main();
 </script>
 </body>
 </html>
