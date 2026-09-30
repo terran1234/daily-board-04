@@ -59,8 +59,8 @@
 ### 다시 확인하는 법
 
 ```
-powershell -File scripts/scan-secrets.ps1
-powershell -File scripts/scan-secrets.ps1 -BaseUrl https://terran1234.github.io/daily-board-04
+powershell -File scan.ps1
+powershell -File scan.ps1 -BaseUrl https://terran1234.github.io/daily-board-04
 ```
 
 검색 스크립트는 GitHub·AWS·Google·Slack 토큰 형태, 개인 키 블록, Bearer 토큰, `Authorization` 헤더, 키 이름에 값을 대입하는 문장, 주소 뒤에 키·토큰 이름의 쿼리 값이 붙은 경우를 찾습니다. 찾은 곳의 파일·줄·종류만 출력하고 값 자체는 출력하지 않습니다.
@@ -80,7 +80,7 @@ powershell -File scripts/scan-secrets.ps1 -BaseUrl https://terran1234.github.io/
 ```
 index.html              정보판 화면 (실시간 조회 + 저장 기록 대조)
 scripts/record.ps1      정상 응답 한 건을 원자료 그대로 + 저장값으로 남기는 스크립트
-scripts/scan-secrets.ps1  저장소·배포 파일의 비밀값 검색 스크립트
+scan.ps1                저장소·배포 파일의 비밀값 검색 스크립트
 data/raw/YYYY-MM-DD.json  받은 그대로의 원자료 (KST 날짜별)
 data/latest.json          저장값 (값, 단위, 출처, 두 시각, 시간대)
 ```

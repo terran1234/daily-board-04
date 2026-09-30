@@ -1,11 +1,11 @@
 # Scan repo files (and optionally the deployed site) for secret-looking text.
 # Usage:
-#   powershell -File scripts/scan-secrets.ps1
-#   powershell -File scripts/scan-secrets.ps1 -BaseUrl https://terran1234.github.io/daily-board-04
+#   powershell -File scan.ps1
+#   powershell -File scan.ps1 -BaseUrl https://terran1234.github.io/daily-board-04
 # Prints only file, line and pattern name. It never prints the matched text.
 param([string]$BaseUrl = '')
 $ErrorActionPreference = 'Stop'
-$root = Split-Path -Parent $PSScriptRoot
+$root = $PSScriptRoot
 
 # name -> regex
 $patterns = [ordered]@{
@@ -44,7 +44,7 @@ Get-ChildItem $root -Recurse -File -Force |
 "local files scanned : $count"
 
 if ($BaseUrl) {
-  $paths = 'index.html','README.md','scripts/record.ps1','scripts/scan-secrets.ps1','data/latest.json'
+  $paths = 'index.html','README.md','scripts/record.ps1','scan.ps1','data/latest.json'
   $paths += Get-ChildItem "$root\data\raw" -File | ForEach-Object { "data/raw/$($_.Name)" }
   $n = 0
   foreach ($p in $paths) {
