@@ -7,8 +7,9 @@
 #   - Next KST date -> new row.
 #   - The raw response is saved as-is to data/raw/<KST date>.json.
 #   - Nothing is written when the response is not a valid success response.
-#   - -MaxDays caps the number of DIFFERENT real dates kept (course task needs exactly 2).
-#     Updating a date that is already stored is always allowed.
+#   - -MaxDays caps the number of DIFFERENT real dates kept. The course needs two receipts on two
+#     different server dates; the first real day (2026-09-30) happened before any receipt was filed,
+#     so the cap is 3 (first day + the two receipt days). Updating a stored date is always allowed.
 #
 # Test-only parameters (never used by the scheduled run):
 #   -DataDir  write somewhere else, -RawFile read this file instead of calling the network,
@@ -17,7 +18,7 @@ param(
   [string]$DataDir = '',
   [string]$RawFile = '',
   [string]$AsOf = '',
-  [int]$MaxDays = 2
+  [int]$MaxDays = 3
 )
 $ErrorActionPreference = 'Stop'
 $inv = [Globalization.CultureInfo]::InvariantCulture

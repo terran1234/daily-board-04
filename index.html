@@ -642,7 +642,8 @@ function runDaily2() {
 function buildDaily() { $('d1-run').onclick = runDaily1; $('d2-run').onclick = runDaily2; runDaily1(); runDaily2(); }
 
 /* ================= real daily records + day-over-day ================= */
-const REAL_TARGET = 2;                       // the course task needs exactly two different real KST dates
+const REAL_TARGET = 2;                       // the course task needs two different real KST dates (day-over-day uses the latest two)
+const REAL_CAP = 3;                          // record-day.ps1 keeps at most three different real dates
 const r6 = x => Number(x.toFixed(6));       // stored values have at most 6 decimals; hide floating-point noise
 const fSigned = (n, d) => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n).toFixed(d);
 const addDay = ymd => { const d = new Date(ymd + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); };
@@ -676,7 +677,7 @@ function deltaLine(rows) {
 
 function paintReal({ rows, raws, from }) {
   const n = rows.length, dates = new Set(rows.map(r => r.record_date));
-  const distinct = dates.size === n, done = n === REAL_TARGET && distinct;
+  const distinct = dates.size === n, done = n >= REAL_TARGET && n <= REAL_CAP && distinct;
   const tr = rows.map(r => {
     const raw = raws[r.record_date], src = new Date(r.source_time), last = new Date(r.last_fetched_at);
     const okVal = raw && raw.rates && raw.rates.KRW === r.normalized_value;
@@ -691,9 +692,9 @@ function paintReal({ rows, raws, from }) {
       <td>${okVal ? '<span class="ok-t">✓</span>' : '<span class="no-t">✗</span>'} 원자료=저장값<br>${okSrc ? '<span class="ok-t">✓</span>' : '<span class="no-t">✗</span>'} 관측 시각<br>${okKey ? '<span class="ok-t">✓</span>' : '<span class="no-t">✗</span>'} 날짜 키<br>${okUnit ? '<span class="ok-t">✓</span>' : '<span class="no-t">✗</span>'} 단위</td></tr>`;
   }).join('');
   let status;
-  if (done) status = `<span class="cnt done">✓ 실제 기록 ${n}/${REAL_TARGET}건 · 서로 다른 KST 날짜</span>`;
+  if (done) status = `<span class="cnt done">✓ 실제 기록 ${n === REAL_TARGET ? n + '/' + REAL_TARGET : n}건 · 서로 다른 KST 날짜${n > REAL_TARGET ? ' (어제 대비는 최근 2건 기준)' : ''}</span>`;
   else if (n < REAL_TARGET) status = `<span class="cnt wait">실제 기록 ${n}/${REAL_TARGET}건 · 둘째 날 대기 중</span>`;
-  else status = `<span class="cnt wait">실제 기록 ${n}건 (정확히 ${REAL_TARGET}건이어야 함)</span>`;
+  else status = `<span class="cnt wait">실제 기록 ${n}건 · 날짜가 겹치거나 상한(${REAL_CAP}건)을 넘음</span>`;
 
   let change;
   if (n < 2) {
@@ -717,7 +718,7 @@ function paintReal({ rows, raws, from }) {
   $('real').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">${status}<span class="f-note" style="opacity:.7">기록 출처 파일: ${esc(from)}</span></div>
     <div class="tblwrap"><table class="dtbl"><tr><th>날짜 (KST)</th><th>정규화 값 · 단위</th><th>원천 관측 시각</th><th>조회 시각 (KST)</th><th>공개 원천 URL · 원자료</th><th>대조</th></tr>${tr}</table></div>
     ${change}
-    <p class="rule">이 화면의 값은 저장된 값을 반올림 없이 그대로 보여 줍니다. 실제 기록은 서로 다른 KST 날짜 ${REAL_TARGET}건까지만 보존하도록 기록 스크립트에 상한을 뒀습니다(과제 기준). 같은 날 다시 조회하면 새 줄이 아니라 같은 줄이 갱신됩니다.</p>`;
+    <p class="rule">이 화면의 값은 저장된 값을 반올림 없이 그대로 보여 줍니다. 기록 스크립트는 실제 기록을 서로 다른 KST 날짜 ${REAL_CAP}건까지만 보존합니다. 어제 대비는 항상 가장 최근 두 날짜로 계산합니다. 같은 날 다시 조회하면 새 줄이 아니라 같은 줄이 갱신됩니다.</p>`;
 }
 
 async function buildReal() {
