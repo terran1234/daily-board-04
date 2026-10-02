@@ -35,7 +35,10 @@ else { $fetched = [DateTimeOffset]::UtcNow }
 if ($RawFile) {
   $rawText = [IO.File]::ReadAllText($RawFile, $utf8)
 } else {
-  $resp = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec 20
+  # The source can answer from a stale cache for a while after its daily update, so ask for a fresh copy.
+  # The stored source_url stays the plain URL (no query).
+  $reqUrl = $url + '?nc=' + [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+  $resp = Invoke-WebRequest -UseBasicParsing -Uri $reqUrl -Headers @{ 'Cache-Control' = 'no-cache'; 'Pragma' = 'no-cache' } -TimeoutSec 20
   $rawText = [Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray())
 }
 
@@ -75,6 +78,17 @@ if (Test-Path $dailyPath) {
 }
 $before = $rows.Count
 $existing = $rows | Where-Object { $_.record_date -eq $kstDate } | Select-Object -First 1
+
+# ---- 3b. a NEW date needs a newer source observation than the latest stored row ----
+# (stops yesterday's value from being filed under today's date while the source still serves stale data)
+if (-not $existing -and $rows.Count -gt 0) {
+  $latestRow = $rows | Sort-Object record_date | Select-Object -Last 1
+  $latestSrc = [DateTimeOffset]::Parse([string]$latestRow.source_time, $inv, [Globalization.DateTimeStyles]::AssumeUniversal)
+  if ($sourceTime -le $latestSrc) {
+    "record_date=$kstDate action=skip rows=$before (source observation $($sourceTime.ToString($fmtZ, $inv)) is not newer than the latest stored one; nothing written)"
+    exit 0
+  }
+}
 
 # ---- 4. cap on different real dates ----
 if (-not $existing -and $MaxDays -gt 0 -and $before -ge $MaxDays) {
