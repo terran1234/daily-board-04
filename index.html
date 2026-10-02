@@ -328,6 +328,7 @@
     <div class="sec-h"><span>04</span><h2>실제 일별 기록과 어제 대비</h2></div>
     <p class="sec-sub">위의 합성 시험과 달리 이 영역은 <b>실제 공개 원천에서 실제 날짜에 조회한 값</b>입니다. 하루 한 줄로 저장하고, 서로 다른 KST 날짜 두 값으로 어제 대비 변화를 계산합니다. 값을 만들어 채우지 않습니다.</p>
     <div class="realbox" id="real">불러오는 중…</div>
+    <div class="realbox" id="summary" style="margin-top:12px"></div>
   </section>
 
   <!-- ===== 05 package ===== -->
@@ -649,12 +650,13 @@ const fSigned = (n, d) => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n).toF
 const addDay = ymd => { const d = new Date(ymd + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); };
 
 async function loadDaily() {
-  let rows, from;
+  let rows, from, failed = false;
   try {
     const r = await fetch('data/daily.json', { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     rows = await r.json(); from = 'data/daily.json';
   } catch (_) {          // before the first scheduled run: the single real record we already have
+    failed = true;
     const { stored } = await loadStored();
     rows = [{ record_id: 'usd-krw-' + stored.kst_date, signal_id: 'usd-krw', record_date: stored.kst_date, record_timezone: 'Asia/Seoul', normalized_value: stored.value, unit: stored.unit,
       source_name: 'ExchangeRate-API', source_url: stored.source_url, source_time: stored.source_time_utc, first_fetched_at: stored.fetched_at_utc, last_fetched_at: stored.fetched_at_utc, raw_file: 'data/raw/' + stored.kst_date + '.json' }];
@@ -663,7 +665,7 @@ async function loadDaily() {
   rows = rows.slice().sort((a, b) => a.record_date.localeCompare(b.record_date));
   const raws = {};
   for (const r of rows) { try { raws[r.record_date] = JSON.parse(await (await fetch(r.raw_file, { cache: 'no-store' })).text()); } catch (_) { raws[r.record_date] = null; } }
-  return { rows, raws, from };
+  return { rows, raws, from, failed };
 }
 
 function deltaLine(rows) {
@@ -721,9 +723,32 @@ function paintReal({ rows, raws, from }) {
     <p class="rule">이 화면의 값은 저장된 값을 반올림 없이 그대로 보여 줍니다. 기록 스크립트는 실제 기록을 서로 다른 KST 날짜 ${REAL_CAP}건까지만 보존합니다. 어제 대비는 항상 가장 최근 두 날짜로 계산합니다. 같은 날 다시 조회하면 새 줄이 아니라 같은 줄이 갱신됩니다.</p>`;
 }
 
+/* ================= record summary: max / min / average ================= */
+// round half up on the decimal value (1000.005 -> 1,000.01); 1e-7 absorbs binary floating-point error
+const fmt2 = x => (Math.floor(x * 100 + 0.5 + 1e-7) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// vals: [{ date, v }] sorted by date ascending; ties go to the most recent date
+function summarize(vals) {
+  let hi = vals[0], lo = vals[0], sum = 0;
+  for (const p of vals) { if (p.v >= hi.v) hi = p; if (p.v <= lo.v) lo = p; sum += p.v; }
+  return { hi, lo, avg: sum / vals.length };
+}
+
+function paintSummary({ rows, raws, failed }) {
+  const box = $('summary');
+  if (failed) { box.innerHTML = '<div class="err-box"><b>기록을 불러오지 못했습니다.</b> (data/daily.json) 위쪽 보드의 환율과 어제 대비는 그대로 표시됩니다.</div>'; return; }
+  // TODO(T05-V07): skip rows whose normalized_value is not a finite number and show "N건 제외"
+  // TODO(T05-V09/V10): recompute from raws[date].rates.KRW and show a match / mismatch line
+  if (!rows.length) { box.innerHTML = '<div class="waitbox"><b>기록 요약:</b> 아직 요약할 기록이 없습니다.</div>'; return; }
+  const s = summarize(rows.map(r => ({ date: r.record_date, v: r.normalized_value })));
+  const one = rows.length === 1 ? '<li>기록 1건</li>' : '';
+  box.innerHTML = `<div class="chg"><div class="big">기록 요약 · 최고 ${fmt2(s.hi.v)} · 최저 ${fmt2(s.lo.v)} · 평균 ${fmt2(s.avg)}</div>
+    <div class="fm">단위: KRW per 1 USD · 기록 ${rows.length}건 기준 · 소수 둘째 자리 반올림<br>최고 ${fmt2(s.hi.v)} (${esc(s.hi.date)}) / 최저 ${fmt2(s.lo.v)} (${esc(s.lo.date)}) / 평균 ${fmt2(s.avg)}</div></div>
+    <div class="rchk"><ul>${one}</ul></div>`;
+}
+
 async function buildReal() {
-  try { const d = await loadDaily(); deltaLine(d.rows); paintReal(d); }
-  catch (e) { $('real').innerHTML = `<div class="err-box"><b>실제 일별 기록을 읽지 못했습니다.</b> (${esc(e.message)})</div>`; $('dline').textContent = ''; }
+  try { const d = await loadDaily(); deltaLine(d.rows); paintReal(d); paintSummary(d); }
+  catch (e) { $('real').innerHTML = `<div class="err-box"><b>실제 일별 기록을 읽지 못했습니다.</b> (${esc(e.message)})</div>`; $('dline').textContent = ''; $('summary').innerHTML = ''; }
 }
 
 /* ================= package check ================= */

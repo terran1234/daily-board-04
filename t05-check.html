@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>T05 검사 10개</title>
+<style>body{font:15px/1.5 system-ui,sans-serif;max-width:900px;margin:24px auto;padding:0 16px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top}.p{color:#0a7d2c;font-weight:700}.f{color:#c0262d;font-weight:700}iframe{position:absolute;left:-9999px;width:1200px;height:800px}</style></head>
+<body>
+<h1>T05 검사 10개 (기록 요약)</h1>
+<p>사용법: 저장소 루트에서 <code>python -m http.server 8000</code> 실행 → 브라우저에서 <code>http://localhost:8000/t05-check.html</code> 열기. 공개 주소에서는 <code>.../t05-check.html</code>. 10개 각각 PASS/FAIL, 마지막에 합계가 나옵니다.</p>
+<div id="sum"></div>
+<table id="t"><tr><th>ID</th><th>입력</th><th>기대값</th><th>결과</th><th>실제로 화면에 보인 글</th></tr></table>
+<iframe id="app" src="index.html"></iframe>
+<script>
+const R = (d, v) => ({ record_date: d, normalized_value: v });
+const raw = v => ({ rates: { KRW: v } });
+const base = [R('2026-09-30', 1353.681844), R('2026-10-01', 1355.838011), R('2026-10-02', 1360.202164)];
+const baseRaw = { '2026-09-30': raw(1353.681844), '2026-10-01': raw(1355.838011), '2026-10-02': raw(1360.202164) };
+const BAD = /NaN|undefined|Infinity/;
+const CHECKS = [
+  ['T05-V01', '기준 데이터 3건', '최고 1,360.20 / 최저 1,353.68 / 평균 1,356.57, 단위 KRW per 1 USD',
+    () => ({ rows: base, raws: baseRaw }), t => ['최고 1,360.20', '최저 1,353.68', '평균 1,356.57', 'KRW per 1 USD'].every(s => t.includes(s))],
+  ['T05-V02', '기준 데이터 3건', '최고 날짜 2026-10-02, 최저 날짜 2026-09-30',
+    () => ({ rows: base, raws: baseRaw }), t => t.includes('1,360.20 (2026-10-02)') && t.includes('1,353.68 (2026-09-30)')],
+  ['T05-V03', '기록 1건', '최고=최저=평균=1,353.68, "기록 1건" 안내',
+    () => ({ rows: [base[0]], raws: baseRaw }), t => t.includes('최고 1,353.68') && t.includes('최저 1,353.68') && t.includes('평균 1,353.68') && t.includes('기록 1건') && !BAD.test(t)],
+  ['T05-V04', '기록 0건', '"아직 요약할 기록이 없습니다", NaN/undefined/Infinity 없음',
+    () => ({ rows: [], raws: {} }), t => t.includes('아직 요약할 기록이 없습니다') && !BAD.test(t)],
+  ['T05-V05', '같은 값 1360.00 두 날(10-01, 10-02)', '최고 날짜는 더 최근 2026-10-02',
+    () => ({ rows: [R('2026-10-01', 1360), R('2026-10-02', 1360)], raws: {} }), t => t.includes('최고 1,360.00 (2026-10-02)')],
+  ['T05-V06', '값 1000.004, 1000.005', '최고 1,000.01 / 평균 1,000.00 / 최저 1,000.00',
+    () => ({ rows: [R('2026-10-01', 1000.004), R('2026-10-02', 1000.005)], raws: {} }), t => t.includes('최고 1,000.01') && t.includes('평균 1,000.00') && t.includes('최저 1,000.00')],
+  ['T05-V07', '기준 3건 + 값이 문자 "1300"인 줄', '문자 줄 제외, V01과 같은 값, "1건 제외" 안내',
+    () => ({ rows: [...base, R('2026-10-03', '1300')], raws: baseRaw }), t => ['최고 1,360.20', '최저 1,353.68', '평균 1,356.57', '1건 제외'].every(s => t.includes(s)) && !BAD.test(t)],
+  ['T05-V08', 'daily.json 404 (불러오기 실패)', '"기록을 불러오지 못했습니다" 표시, 위쪽 보드 유지',
+    () => ({ rows: base, raws: baseRaw, failed: true }), t => t.includes('기록을 불러오지 못했습니다') && !t.includes('최고 1,360.20')],
+  ['T05-V09', '기준 3건 + 원자료 3개', '"원자료와 일치" 표시(✓)',
+    () => ({ rows: base, raws: baseRaw }), t => t.includes('✓') && t.includes('원자료와 일치')],
+  ['T05-V10', '기준 3건, 원자료 한 값만 다름', '"일치하지 않습니다" 표시, ✓ 없음',
+    () => ({ rows: base, raws: { ...baseRaw, '2026-10-01': raw(1300) } }), t => t.includes('일치하지 않습니다') && !t.includes('✓')],
+];
+const app = document.getElementById('app');
+app.addEventListener('load', async () => {
+  await new Promise(r => setTimeout(r, 1500));          // let the page finish its own first render
+  const w = app.contentWindow, box = w.document.getElementById('summary');
+  let pass = 0;
+  const tb = document.getElementById('t');
+  for (const [id, input, expect, make, test] of CHECKS) {
+    let ok = false, text = '';
+    try { w.paintSummary(make()); text = box.innerText.replace(/\s+/g, ' ').trim(); ok = !!test(text); }
+    catch (e) { text = 'ERROR ' + e.message; }
+    if (ok) pass++;
+    tb.insertAdjacentHTML('beforeend', `<tr><td>${id}</td><td>${input}</td><td>${expect}</td><td class="${ok ? 'p' : 'f'}">${ok ? 'PASS' : 'FAIL'}</td><td>${text.slice(0, 160).replace(/</g, '&lt;')}</td></tr>`);
+  }
+  document.getElementById('sum').innerHTML = `<h2 id="total">${pass}/${CHECKS.length} PASS</h2>`;
+  document.title = `T05 ${pass}/${CHECKS.length} PASS`;
+});
+</script></body></html>
