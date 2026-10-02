@@ -735,15 +735,60 @@ function summarize(vals) {
 
 function paintSummary({ rows, raws, failed }) {
   const box = $('summary');
-  if (failed) { box.innerHTML = '<div class="err-box"><b>기록을 불러오지 못했습니다.</b> (data/daily.json) 위쪽 보드의 환율과 어제 대비는 그대로 표시됩니다.</div>'; return; }
-  // TODO(T05-V07): skip rows whose normalized_value is not a finite number and show "N건 제외"
-  // TODO(T05-V09/V10): recompute from raws[date].rates.KRW and show a match / mismatch line
-  if (!rows.length) { box.innerHTML = '<div class="waitbox"><b>기록 요약:</b> 아직 요약할 기록이 없습니다.</div>'; return; }
-  const s = summarize(rows.map(r => ({ date: r.record_date, v: r.normalized_value })));
-  const one = rows.length === 1 ? '<li>기록 1건</li>' : '';
+  if (failed) {
+    box.innerHTML = '<div class="err-box"><b>기록을 불러오지 못했습니다.</b> (data/daily.json) 위쪽 보드의 환율과 어제 대비는 그대로 표시됩니다.</div>';
+    return;
+  }
+
+  // V07: normalized_value가 실제 숫자인 기록만 계산에 사용
+  const validRows = rows.filter(r => typeof r.normalized_value === 'number' && Number.isFinite(r.normalized_value));
+  const excluded = rows.length - validRows.length;
+
+  if (!validRows.length) {
+    box.innerHTML = '<div class="waitbox"><b>기록 요약:</b> 아직 요약할 기록이 없습니다.</div>';
+    return;
+  }
+
+  const s = summarize(validRows.map(r => ({ date: r.record_date, v: r.normalized_value })));
+  const one = validRows.length === 1 ? '<li>기록 1건</li>' : '';
+  const excludedLine = excluded > 0 ? `<li>값이 숫자가 아닌 기록 ${excluded}건 제외</li>` : '';
+
+  // V09/V10: 원자료의 rates.KRW로 별도 계산하여 화면 요약과 비교
+  const rawVals = [];
+  let rawReadable = true;
+
+  for (const r of validRows) {
+    const raw = raws && raws[r.record_date];
+    const rawValue = raw && raw.rates ? raw.rates.KRW : undefined;
+
+    if (typeof rawValue !== 'number' || !Number.isFinite(rawValue)) {
+      rawReadable = false;
+      break;
+    }
+
+    rawVals.push({ date: r.record_date, v: rawValue });
+  }
+
+  let rawCheck = '원자료를 읽지 못해 대조할 수 없습니다';
+
+  if (rawReadable && rawVals.length === validRows.length) {
+    const rs = summarize(rawVals);
+
+    const same =
+      fmt2(rs.hi.v) === fmt2(s.hi.v) &&
+      fmt2(rs.lo.v) === fmt2(s.lo.v) &&
+      fmt2(rs.avg) === fmt2(s.avg) &&
+      rs.hi.date === s.hi.date &&
+      rs.lo.date === s.lo.date;
+
+    rawCheck = same
+      ? '✓ 원자료와 일치'
+      : '✗ 일치하지 않습니다';
+  }
+
   box.innerHTML = `<div class="chg"><div class="big">기록 요약 · 최고 ${fmt2(s.hi.v)} · 최저 ${fmt2(s.lo.v)} · 평균 ${fmt2(s.avg)}</div>
-    <div class="fm">단위: KRW per 1 USD · 기록 ${rows.length}건 기준 · 소수 둘째 자리 반올림<br>최고 ${fmt2(s.hi.v)} (${esc(s.hi.date)}) / 최저 ${fmt2(s.lo.v)} (${esc(s.lo.date)}) / 평균 ${fmt2(s.avg)}</div></div>
-    <div class="rchk"><ul>${one}</ul></div>`;
+    <div class="fm">단위: KRW per 1 USD · 기록 ${validRows.length}건 기준 · 소수 둘째 자리 반올림<br>최고 ${fmt2(s.hi.v)} (${esc(s.hi.date)}) / 최저 ${fmt2(s.lo.v)} (${esc(s.lo.date)}) / 평균 ${fmt2(s.avg)}</div></div>
+    <div class="rchk"><ul>${one}${excludedLine}<li>${rawCheck}</li></ul></div>`;
 }
 
 async function buildReal() {
